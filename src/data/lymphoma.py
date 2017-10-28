@@ -6,7 +6,6 @@ import scipy
 from PIL import Image
 from scipy import misc
 
-
 class LymphomaGenerator(object):
 
     @classmethod
