@@ -2,14 +2,28 @@ import numpy as np
 from keras.models import Model
 from keras.layers import Input, concatenate, Conv2D, MaxPooling2D, Conv2DTranspose
 from keras.optimizers import Adam
+from keras import backend as K
+from keras.callbacks import ModelCheckpoint
+from skimage.transform import resize
 
 data_folder = '../../data/ds-lymphoma/'
 data_training = np.load(data_folder + 'training.npz')
 data_testing=np.load(data_folder + 'test.npz')
-all_data, all_labels = data_training['data'], data_training['labels']
+train_data, train_labels = data_training['data'], data_training['labels']
+smooth=1
+img_rows=img_cols=int(np.sqrt(train_data.shape[1]))
+
+def dice_coef(y_true, y_pred):
+    y_true_f = K.flatten(y_true)
+    y_pred_f = K.flatten(y_pred)
+    intersection = K.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
+
+def dice_coef_loss(y_true, y_pred):
+    return -dice_coef(y_true, y_pred)
+
 
 def get_unet():
-    img_rows=img_cols=int(np.sqrt(all_data.shape[1]))
     inputs = Input((img_rows, img_cols, 1))
     conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
     conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
@@ -54,15 +68,22 @@ def get_unet():
 
     return model
 
+def preprocess(imgs):
+    imgs_p = np.ndarray((imgs.shape[0], img_rows, img_cols), dtype=np.uint8)
+    for i in range(imgs.shape[0]):
+        imgs_p[i] = resize(imgs[i], (img_cols, img_rows), preserve_range=True)
+
+    imgs_p = imgs_p[..., np.newaxis]
+    return imgs_p
+
 model = get_unet()
-# model_checkpoint = ModelCheckpoint('weights.h5', monitor='val_loss', save_best_only=True)
-#
-#     print('-'*30)
-#     print('Fitting model...')
-#     print('-'*30)
-#     model.fit(imgs_train, imgs_mask_train, batch_size=32, nb_epoch=20, verbose=1, shuffle=True,
-#               validation_split=0.2,
-#               callbacks=[model_checkpoint])
-#
-#
-#
+model_checkpoint = ModelCheckpoint('weights.h5', monitor='val_loss', save_best_only=True)
+
+print('-'*30)
+print('Fitting model...')
+print('-'*30)
+label_real=resize(train_labels[:,0,:],(192,192))
+print(label_real[1,:])
+
+#model.fit(preprocess(train_data), preprocess(label_real), batch_size=32, nb_epoch=10, verbose=1, shuffle=True,
+ #         validation_split=0.2, callbacks=[model_checkpoint])
