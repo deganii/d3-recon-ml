@@ -68,11 +68,18 @@ def get_unet():
 
     return model
 
-def preprocess(imgs):
-    imgs_p = np.ndarray((imgs.shape[0], img_rows, img_cols), dtype=np.uint8)
-    for i in range(imgs.shape[0]):
-        imgs_p[i] = resize(imgs[i], (img_cols, img_rows), preserve_range=True)
+#def preprocess(imgs):
+ #   imgs_p = np.ndarray((imgs.shape[0], img_rows, img_cols), dtype=np.uint8)
+  #  for i in range(imgs.shape[0]):
+   #     imgs_p[i] = np.reshape(imgs[i], (img_cols, img_rows), preserve_range=True)
 
+#    imgs_p = imgs_p[..., np.newaxis]
+ #   return imgs_p
+
+def preprocess(imgs):
+    imgs_p = np.ndarray((imgs.shape[0], img_rows, img_cols), dtype=float)
+    for i in range(imgs.shape[0]):
+        imgs_p[i] = np.reshape(imgs[i], (img_rows, img_cols))
     imgs_p = imgs_p[..., np.newaxis]
     return imgs_p
 
@@ -82,8 +89,12 @@ model_checkpoint = ModelCheckpoint('weights.h5', monitor='val_loss', save_best_o
 print('-'*30)
 print('Fitting model...')
 print('-'*30)
-label_real=resize(train_labels[:,0,:],(192,192))
-print(label_real[1,:])
 
-#model.fit(preprocess(train_data), preprocess(label_real), batch_size=32, nb_epoch=10, verbose=1, shuffle=True,
- #         validation_split=0.2, callbacks=[model_checkpoint])
+#testing resize function.  Cant get to work for individual line items
+label_real=train_labels[:,0,:]
+
+
+
+
+model.fit(preprocess(train_data), preprocess(label_real), batch_size=32, nb_epoch=10, verbose=1, shuffle=True,
+          validation_split=0.2, callbacks=[model_checkpoint])
