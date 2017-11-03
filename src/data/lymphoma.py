@@ -81,8 +81,11 @@ class LymphomaGenerator(object):
             if data is None:
                 data = np.zeros((num_input_files * 4 * M_count * N_count, tile[0] , tile[1]))
                 labels = np.zeros((num_input_files * 4 * M_count * N_count, 2, tile[0] , tile[1]))
-
-
+                # print("data shape: ")
+                # print(data.shape)
+                # print('\n')
+                # print("labels shape: ")
+                # print(labels.shape)
 
 
             for rot in range(0, 360, 90):
@@ -117,12 +120,12 @@ class LymphomaGenerator(object):
                         scipy.misc.imsave(os.path.join(image_folder, imagDestFilename), imageTile)
 
                         # append the raw data to the
-                        data[seq, :] = np.rot90(subNormAmp[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1])
-                        labels[seq, 0, :] = np.rot90(reconReal[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1])
+                        data[seq, :] = np.rot90(subNormAmp[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)
+                        labels[seq, 0, :] = np.rot90(reconReal[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)
                         labels[seq, 1, :] = np.rot90(reconImag[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1])
                         seq = seq + 1
-                data = data[..., np.newaxis]
-                labels = labels[..., np.newaxis]
+        data = data[..., np.newaxis]
+        labels = labels[..., np.newaxis]
         if save_npz:
             np.savez(os.path.join(output_folder, set_name + '-all.npz'), data=data, labels=labels)
 
