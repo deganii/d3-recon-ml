@@ -9,26 +9,31 @@ from scipy import misc
 class LymphomaGenerator(object):
 
     @classmethod
-    def partitionTrainingAndTestSet(cls):
-        data_folder = '../../data/ds-lymphoma/'
-        data_npz = np.load(data_folder + 'all.npz')
+    def partitionTrainingAndTestSet(cls, set_name='ds-lymphoma'):
+        data_folder = '../../data/'
+        data_npz = np.load(data_folder + set_name + '-all.npz')
         all_data, all_labels = data_npz['data'], data_npz['labels']
+        np.random.seed(0)
         indices = np.random.permutation(all_data.shape[0])
         test_count = int(np.floor(all_data.shape[0] * 0.2))
         test_idx, training_idx = indices[:test_count], indices[test_count:]
         training_data, test_data = all_data[training_idx, :], all_data[test_idx, :]
         training_labels, test_labels = all_labels[training_idx, :, :], all_labels[test_idx, :, :]
-        np.savez(os.path.join(data_folder, 'training.npz'), data=training_data, labels=training_labels)
-        np.savez(os.path.join(data_folder, 'test.npz'), data=test_data, labels=test_labels)
+        np.savez(os.path.join(data_folder, set_name + '-training.npz'), data=training_data, labels=training_labels)
+        np.savez(os.path.join(data_folder, set_name + '-test.npz'), data=test_data, labels=test_labels)
 
     @classmethod
-    def generateImage(cls, set_name, stride=100, tile=(200, 200),
+    def generateImages(cls, set_name, stride=100, tile=(200, 200),
                       input_folder='../../data/Reconstruction/',
-                      output_folder='../../data/ds-lymphoma/',
+                      output_folder='../../data/',
                       save_npz=True):
         data = None
         labels = None
         seq = 0
+
+        image_folder = os.path.join(output_folder, set_name)
+        if not os.path.exists(image_folder):
+            os.makedirs(image_folder)
 
         input_files = glob.glob(input_folder + '*.mat')
         num_input_files = len(input_files)
@@ -77,8 +82,8 @@ class LymphomaGenerator(object):
                 data = np.zeros((num_input_files * 4 * M_count * N_count, tile[0] * tile[1]))
                 labels = np.zeros((num_input_files * 4 * M_count * N_count, 2, tile[0] * tile[1]))
 
-            if not os.path.exists(output_folder):
-                os.makedirs(output_folder)
+
+
 
             for rot in range(0, 360, 90):
                 for m in range(0, last_M, stride):
@@ -107,22 +112,19 @@ class LymphomaGenerator(object):
                         realDestFilename = '{0:05}-R-{1}-{2}.png'.format(seq,transformation,input_title)
                         imagDestFilename = '{0:05}-I-{1}-{2}.png'.format(seq,transformation,input_title)
 
-                        scipy.misc.imsave(os.path.join(output_folder, holoDestFilename), holoTile)
-                        scipy.misc.imsave(os.path.join(output_folder, realDestFilename), realTile)
-                        scipy.misc.imsave(os.path.join(output_folder, imagDestFilename), imageTile)
+                        scipy.misc.imsave(os.path.join(image_folder, holoDestFilename), holoTile)
+                        scipy.misc.imsave(os.path.join(image_folder, realDestFilename), realTile)
+                        scipy.misc.imsave(os.path.join(image_folder, imagDestFilename), imageTile)
 
                         # append the raw data to the
                         data[seq, :] = np.rot90(subNormAmp[st_m:end_m, st_n:end_n], int(rot / 90)).reshape(tile[0] * tile[1])
                         labels[seq, 0, :] = np.rot90(reconReal[st_m:end_m, st_n:end_n], int(rot / 90)).reshape(tile[0] * tile[1])
                         labels[seq, 1, :] = np.rot90(reconImag[st_m:end_m, st_n:end_n], int(rot / 90)).reshape(tile[0] * tile[1])
-
                         seq = seq + 1
-            dir_name = os.path.dirname(output_folder)
-            if save_npz:
-                np.savez(os.path.join(dir_name, set_name + '.npz'), data=data, labels=labels)
-            return (data, labels, seq)
+        if save_npz:
+            np.savez(os.path.join(output_folder, set_name + '-all.npz'), data=data, labels=labels)
 
 
 
-LymphomaGenerator.generateImage('all')
-#LymphomaGenerator.partitionTrainingAndTestSet()
+LymphomaGenerator.generateImages('ds-lymphoma')
+#LymphomaGenerator.partitionTrainingAndTestSet('ds-lymphoma')

@@ -4,24 +4,12 @@ from keras.layers import Input, concatenate, Conv2D, MaxPooling2D, Conv2DTranspo
 from keras.optimizers import Adam
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint
-from skimage.transform import resize
 
-data_folder = '../../data/ds-lymphoma/'
-data_training = np.load(data_folder + 'training.npz')
-data_testing=np.load(data_folder + 'test.npz')
+data_folder = '../../data/'
+data_training = np.load(data_folder + 'ds-lymphoma-training.npz')
+data_testing=np.load(data_folder + 'ds-lymphoma-test.npz')
 train_data, train_labels = data_training['data'], data_training['labels']
-smooth=1
 img_rows=img_cols=int(np.sqrt(train_data.shape[1]))
-
-def dice_coef(y_true, y_pred):
-    y_true_f = K.flatten(y_true)
-    y_pred_f = K.flatten(y_pred)
-    intersection = K.sum(y_true_f * y_pred_f)
-    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
-
-def dice_coef_loss(y_true, y_pred):
-    return -dice_coef(y_true, y_pred)
-
 
 def get_unet():
     inputs = Input((img_rows, img_cols, 1))
@@ -60,11 +48,14 @@ def get_unet():
     conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(up9)
     conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv9)
 
-    conv10 = Conv2D(1, (1, 1), activation='sigmoid')(conv9)
 
-    model = Model(inputs=[inputs], outputs=[conv10])
+    #conv10 = Conv2D(1, (1, 1), activation='sigmoid')(conv9)
 
-    model.compile(optimizer=Adam(lr=1e-5), loss=dice_coef_loss, metrics=[dice_coef])
+    model = Model(inputs=[inputs], outputs=[conv9])
+
+
+    #model.compile(optimizer=Adam(lr=1e-5), loss=dice_coef_loss, metrics=[dice_coef])
+    model.compile(optimizer=Adam(lr=1e-5), loss='mean_squared_error')
 
     return model
 
@@ -92,9 +83,6 @@ print('-'*30)
 
 #testing resize function.  Cant get to work for individual line items
 label_real=train_labels[:,0,:]
-
-
-
 
 model.fit(preprocess(train_data), preprocess(label_real), batch_size=32, nb_epoch=10, verbose=1, shuffle=True,
           validation_split=0.2, callbacks=[model_checkpoint])
