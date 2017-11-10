@@ -4,6 +4,8 @@ from keras.layers import Input, concatenate, Conv2D, MaxPooling2D, Conv2DTranspo
 from keras.optimizers import Adam
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint
+import os
+from src.visualization.fit_plotter import FitPlotter
 
 K.set_image_data_format('channels_last')
 data_folder = '../../data/'
@@ -40,7 +42,11 @@ def get_unet(num_layers = 4):
 
 modelr = get_unet(4)
 modeli = get_unet()
-modelr_checkpoint = ModelCheckpoint('weights_R.h5', monitor='val_loss', save_best_only=True)
+
+models_folder = '../../models/'
+if not os.path.exists(models_folder):
+    os.makedirs(models_folder)
+modelr_checkpoint = ModelCheckpoint(models_folder + 'weights_R.h5', monitor='val_loss', save_best_only=True)
 #modeli_checkpoint = ModelCheckpoint('weights_I.h5', monitor='val_loss', save_best_only=True)
 
 print('-'*30)
@@ -50,14 +56,18 @@ print('-'*30)
 #testing resize function.  Cant get to work for individual line items
 label_real=train_labels[:,0,:]
 label_imaginary=train_labels[:,1,:]
-train_data_s=train_data[0:500,...]
-train_labelR_s=label_real[0:500,...]
-train_labelI_s=label_imaginary[0:500,...]
+train_data_s=train_data[0:64,...]
+train_labelR_s=label_real[0:64,...]
+train_labelI_s=label_imaginary[0:64,...]
 
 modelr.summary()
 
-modelr.fit(train_data_s, train_labelR_s, batch_size=32, nb_epoch=10, verbose=1, shuffle=True,
+history = modelr.fit(train_data_s, train_labelR_s, batch_size=32, epochs=2, verbose=1, shuffle=True,
           validation_split=0.2, callbacks=[modelr_checkpoint])
+
+# plot and save:
+FitPlotter.save_fig(history, 'unet-4.jpg')
+
 
 #modeli.fit(train_data, label_imaginary, batch_size=32, nb_epoch=10, verbose=1, shuffle=True,
           #validation_split=0.2, callbacks=[modeli_checkpoint])

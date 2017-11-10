@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="a879513e-0216-45f4-a79e-7abe417e0ed4" name="6.872-GPU" url="http://35.190.185.17">
+        <fileTransfer host="35.190.185.17" port="22" privateKey="C:\Program Files\PuTTY\PPK\6.872-GPU.ppk" rootFolder="/home/idegani" accessType="SFTP" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
