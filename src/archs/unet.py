@@ -66,7 +66,7 @@ history = modelr.fit(train_data_s, train_labelR_s, batch_size=32, epochs=2, verb
           validation_split=0.2, callbacks=[modelr_checkpoint])
 
 # plot and save:
-FitPlotter.save_fig(history, 'unet-4.jpg')
+FitPlotter.save_fig(history.history, 'unet-4.png')
 
 
 #modeli.fit(train_data, label_imaginary, batch_size=32, nb_epoch=10, verbose=1, shuffle=True,
