@@ -131,5 +131,5 @@ class LymphomaGenerator(object):
 
 
 
-LymphomaGenerator.generateImages('ds-lymphoma')
+#LymphomaGenerator.generateImages('ds-lymphoma')
 LymphomaGenerator.partitionTrainingAndTestSet('ds-lymphoma')

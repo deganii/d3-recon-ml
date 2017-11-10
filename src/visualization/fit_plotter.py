@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 class FitPlotter(object):
@@ -10,6 +12,7 @@ class FitPlotter(object):
                 os.makedirs(figures_folder)
         return figures_folder
 
+    @classmethod
     def get_full_path(cls, file):
         return os.path.join(FitPlotter.get_figures_folder(), file)
 
@@ -25,11 +28,11 @@ class FitPlotter(object):
         ax.set_xlabel('Epoch')
         ax.set_ylabel('Accuracy')
 
-        epochs = len(history.history['acc'])
+        epochs = len(history['acc'])
         epoch_dt = [i for i in range(epochs)]
 
-        ax.plot(epoch_dt, history.history['acc'], label='Train', linewidth=0.5)
-        ax.plot(epoch_dt, history.history['val_acc'], label='Validation', linewidth=0.5)
+        ax.plot(epoch_dt, history['acc'], label='Train', linewidth=0.5)
+        ax.plot(epoch_dt, history['val_acc'], label='Validation', linewidth=0.5)
         ax.legend()
         fig.subplots_adjust(left = 0.17)
         fig.subplots_adjust(bottom = 0.27)
@@ -39,5 +42,9 @@ class FitPlotter(object):
         #plt.show()
         #plt.imsave(file)
 
-        plt.savefig(file)
+        plt.savefig(full_path)
         plt.close(fig)
+
+# Test case
+# FitPlotter.save_fig({'acc':[0.1,0.2,0.4], 'val_acc':[0.3, 0.4, 0.6]}, 'unet-test.png')
+
