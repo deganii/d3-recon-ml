@@ -5,3 +5,5 @@ profiles_settings.xml
 misc.xml
 modules.xml
 *.pyc
+figures
+models

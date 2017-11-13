@@ -1,23 +1,19 @@
 import numpy as np
 import os
 import matplotlib
+
+from src.processing.folders import Folders
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 class FitPlotter(object):
     @classmethod
-    def get_figures_folder(cls, ):
-        figures_folder = '../../figures'
-        if not os.path.exists(figures_folder):
-                os.makedirs(figures_folder)
-        return figures_folder
-
-    @classmethod
     def get_full_path(cls, file):
-        return os.path.join(FitPlotter.get_figures_folder(), file)
+        return os.path.join(Folders.models_folder(), file)
 
     @classmethod
-    def save_fig(cls, history, file, title=''):
+    def save_plot(cls, history, file, title=''):
         # plot and save to disk
         full_path = FitPlotter.get_full_path(file)
 
