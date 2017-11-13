@@ -1,11 +1,12 @@
-import numpy as np
 import matplotlib
 import matplotlib.mlab as mlab
 from scipy.stats import norm
 
 from src.processing.folders import Folders
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 
 class SSIMPlotter(object):
     @classmethod
@@ -13,7 +14,7 @@ class SSIMPlotter(object):
         # plot and save to disk
         full_path = Folders.predictions_folder() + model_name + '_ssim.png'
 
-        fig = plt.figure(figsize=(4,2))
+        fig = plt.figure(figsize=(4, 2))
         ax = fig.add_subplot(111)
         ax.set_xlabel('SSIM')
         ax.set_ylabel('Count(Prediction)')
@@ -24,12 +25,12 @@ class SSIMPlotter(object):
         y = mlab.normpdf(bins, mu, sigma)
         l = plt.plot(bins, y, 'r--', linewidth=2)
 
-        fig.suptitle('SSIM of ' + model_name + ': $\mu={0:.2f},\ \sigma={1:.2f}$'.format(mu,sigma),
+        fig.suptitle('SSIM of ' + model_name + ': $\mu={0:.2f},\ \sigma={1:.2f}$'.format(mu, sigma),
                      fontsize=10, fontweight='bold')
-        fig.subplots_adjust(left = 0.17)
-        fig.subplots_adjust(bottom = 0.27)
-        fig.subplots_adjust(right = 0.96)
-        fig.subplots_adjust(top = 0.84)
+        fig.subplots_adjust(left=0.17)
+        fig.subplots_adjust(bottom=0.27)
+        fig.subplots_adjust(right=0.96)
+        fig.subplots_adjust(top=0.84)
 
         fig.canvas.draw()
         plt.grid(True)
@@ -37,5 +38,4 @@ class SSIMPlotter(object):
         plt.close(fig)
 
 # Test case
-SSIMPlotter.save_plot('unet_test', np.asarray([0.5,0.3,0.4, 0.5,0.5, 0.4, 0.8, 0.2, 0.3, 0.4, 0.4]))
-
+# SSIMPlotter.save_plot('unet_test', np.asarray([0.5,0.3,0.4, 0.5,0.5, 0.4, 0.8, 0.2, 0.3, 0.4, 0.4]))

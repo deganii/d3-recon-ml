@@ -4,7 +4,7 @@ import numpy as np
 import skimage.measure
 from src.processing.folders import Folders
 from PIL import Image
-from src.visualization import SSIMPlotter
+from src.visualization.ssim_plotter import SSIMPlotter
 
 def format_and_save(img_array, output_file, normalize=False):
     img_array = img_array.reshape([192, 192])
@@ -35,6 +35,5 @@ def prediction(model_name, data, labels):
     header += 'STDEV: {0}\n'.format(np.mean(ssim))
     header += 'MIN:   {0}\n, Record ({1}'.format(np.min(ssim), np.argmin(ssim))
     header += 'MAX:   {0}\n, Record ({1}'.format(np.max(ssim), np.argmax(ssim))
-    np.savetxt(mp_folder + 'stats.txt', header=header)
-
+    np.savetxt(mp_folder + 'stats.txt', ssim, header=header)
     SSIMPlotter.save_plot(model_name, ssim)

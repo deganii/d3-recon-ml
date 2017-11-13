@@ -4,7 +4,6 @@ import numpy as np
 from src.processing.folders import Folders
 K.set_image_data_format('channels_last')
 
-
 class DataLoader(object):
 
     @classmethod
@@ -30,3 +29,6 @@ class DataLoader(object):
     @classmethod
     def load_testing(self, dataset='ds-lymphoma', records=-1):
         return DataLoader.load(dataset=dataset, set='test', records=records)
+
+# Load just 64 training records
+# DataLoader.load_training(records=64)
