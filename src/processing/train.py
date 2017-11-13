@@ -53,10 +53,10 @@ def train_unet(num_layers, filter_size, learn_rate, epochs = 10, records = -1):
                       optimizer=Adam(lr=learn_rate), loss='mean_squared_error')
 
     # Step 3: Configure Training Parameters and Train
-    model_name = 'unet_r_{0}_layers_{1}_lr_{2}px_filter'.format(num_layers, learn_rate, filter_size)
+    model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_r'.format(num_layers, learn_rate, filter_size)
     train(model_name, modelr, train_data, train_label_r, epochs)
 
-    model_name = 'unet_i_{0}_layers_{1}_lr_{2}px_filter'.format(num_layers, learn_rate, filter_size)
+    model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_i'.format(num_layers, learn_rate, filter_size)
     train(model_name, modeli, train_data, train_label_r, epochs)
 
     # (TODO) Step 4: Evaluate on Test Set
@@ -65,7 +65,7 @@ def train_unet(num_layers, filter_size, learn_rate, epochs = 10, records = -1):
 # train a single unet on a small dataset
 train_unet(6, 3, 1e-4, epochs=2, records=64)
 
-# train various unets
+# train various unets on the full dataset
 # for lr in [1e-3, 1e-4, 1e-5]:
 #     for layers in [4,5,6]:
 #         for filters in [2,3,4]:
