@@ -59,16 +59,17 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
                       conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
 
     # Step 3: Configure Training Parameters and Train
-    model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_r'.format(
+    model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_r'.format(
         num_layers, learn_rate, filter_size, conv_depth)
-    train(model_name, modelr, train_data, train_label_r, epochs)
+    avg_loss_r = train(model_name_r, modelr, train_data, train_label_r, epochs)
 
-    model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_i'.format(
+    model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_i'.format(
         num_layers, learn_rate, filter_size, conv_depth)
-    train(model_name, modeli, train_data, train_label_r, epochs)
+    avg_loss_i = train(model_name_i, modeli, train_data, train_label_r, epochs)
 
     # (TODO) Step 4: Evaluate on Test Set
     test_data, test_label_r, test_label_i = DataLoader.load_testing(records=records)
+    return model_name_r,model_name_i,avg_loss_r,avg_loss_i
 
 # train a single unet on a small dataset
 #train_unet(6, 3, learn_rate=1e-4, epochs=2, records=64)
@@ -80,8 +81,4 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
 train_unet(num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
 
 
-# train various unets on the full dataset
-# for lr in [1e-3, 1e-4, 1e-5]:
-#     for layers in [4,5,6]:
-#         for filters in [2,3,4]:
-#             train_unet(layers, filters, learn_rate=lr)
+

@@ -43,6 +43,7 @@ def prediction(model_name, data, labels):
     header += 'MAX:   {0}\n, Record ({1}'.format(np.max(ssim), np.argmax(ssim))
     np.savetxt(mp_folder + 'stats.txt', ssim, header=header)
     SSIMPlotter.save_plot(model_name, ssim)
+    return ssim
 
-data,label_r,label_i=DataLoader.load_testing(records=64)
-prediction('unet_3_layers_0.0001_lr_3px_filter_1_convd_r', data, label_r)
+#data,label_r,label_i=DataLoader.load_testing(records=64)
+#prediction('unet_3_layers_0.0001_lr_3px_filter_1_convd_r', data, label_r)
