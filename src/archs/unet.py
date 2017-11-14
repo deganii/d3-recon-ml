@@ -4,11 +4,14 @@ from keras.models import Model
 from keras.layers import Input, concatenate, Conv2D, MaxPooling2D, Conv2DTranspose
 from keras.optimizers import Adam
 from keras import backend as K
+
+from src.metrics.entropy import ImageComparator
+
 K.set_image_data_format('channels_last')
 
+
 def get_unet(img_rows, img_cols, num_layers = 4, filter_size=3, conv_depth=32,
-             optimizer = Adam(lr=1e-4),
-             loss='mean_squared_error', metrics = None):
+             optimizer=Adam(lr=1e-4), loss='mean_squared_error', metrics=None):
     inputs = Input((img_rows, img_cols, 1))
     last_in= inputs
     conv_dict = {}
@@ -35,7 +38,7 @@ def get_unet(img_rows, img_cols, num_layers = 4, filter_size=3, conv_depth=32,
     model = Model(inputs=[inputs], outputs=[conv_last])
 
     if metrics is None:
-        metrics = ['accuracy']
+        metrics = ['accuracy'] #ImageComparator.ssim_metric]
 
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     return model

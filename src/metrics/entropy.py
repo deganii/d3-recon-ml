@@ -4,8 +4,11 @@ import skimage.measure
 class ImageComparator(object):
 
     @classmethod
-    def ssim(cls, img1, img2):
-        return skimage.measure.comapare_ssim(img1, img2)
+    def ssim_metric(cls, y_true, y_pred):
+        ssim_sum = 0
+        for i in range(y_true.shape[0]):
+            ssim_sum += skimage.measure.compare_ssim(y_true[i], y_pred[i])
+        return ssim_sum / y.shape[0]
 
     @classmethod
     def mutual_information(cls, hgram):

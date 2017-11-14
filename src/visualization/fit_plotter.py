@@ -22,13 +22,15 @@ class FitPlotter(object):
         fig.suptitle('', fontsize=10, fontweight='bold')
         ax = fig.add_subplot(111)
         ax.set_xlabel('Epoch')
-        ax.set_ylabel('Accuracy')
+        ax.set_ylabel('SSIM')
 
-        epochs = len(history['acc'])
-        epoch_dt = [i for i in range(epochs)]
+        epochs = len(history['loss'])
+        epoch_dt = [i+1 for i in range(epochs)]
 
-        ax.plot(epoch_dt, history['acc'], label='Train', linewidth=0.5)
-        ax.plot(epoch_dt, history['val_acc'], label='Validation', linewidth=0.5)
+        ax.plot(epoch_dt, 1 - 2 * np.asarray(history['loss']),
+                label='Train', linewidth=0.5)
+        ax.plot(epoch_dt, 1 - 2 * np.asarray(history['val_loss']),
+                label='Validation', linewidth=0.5)
         ax.legend()
         fig.subplots_adjust(left = 0.17)
         fig.subplots_adjust(bottom = 0.27)
@@ -42,5 +44,5 @@ class FitPlotter(object):
         plt.close(fig)
 
 # Test case
-# FitPlotter.save_plot({'acc':[0.1,0.2,0.4], 'val_acc':[0.3, 0.4, 0.6]}, 'unet-test.png')
+# FitPlotter.save_plot({'loss':[0.235,0.236,0.237], 'val_loss':[0.3, 0.4, 0.6]}, 'unet-test.png')
 

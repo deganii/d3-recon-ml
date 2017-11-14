@@ -1,4 +1,5 @@
 import matplotlib
+import keras.models
 
 from src.processing.folders import Folders
 matplotlib.use('Agg')
@@ -8,7 +9,10 @@ from keras import backend as K
 class ImageEvolution(object):
 
     @classmethod
-    def save_plot(cls, model_name, model,  title=''):
+    def save_plot(cls, model_name, title=''):
+        # load model
+        model = keras.models.load_model(Folders.models_folder() + model_name)
+
         # plot and save to disk
         full_path = Folders.figures_folder() + model_name + '_evolution.png'
 

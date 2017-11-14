@@ -42,8 +42,7 @@ def train(model_name, model, data, labels, epochs, debug=False):
     # (TODO) Step 3: Save other visuals
 
 
-
-def train_unet(num_layers, filter_size, learn_rate, epochs = 10,
+def train_unet(num_layers, filter_size, conv_depth=32, learn_rate=1e-4, epochs = 10,
                loss = 'mean_squared_error', records = -1, ):
     """ Train a unet model and save relevant data """
     # Step 1: load data
@@ -52,29 +51,34 @@ def train_unet(num_layers, filter_size, learn_rate, epochs = 10,
 
     # Step 2: Configure architecture
     modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=3,
-                      optimizer=Adam(lr=learn_rate), loss=loss)
+                      conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
     modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=3,
-                      optimizer=Adam(lr=learn_rate), loss=loss)
+                      conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
 
     # Step 3: Configure Training Parameters and Train
-    model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_r'.format(num_layers, learn_rate, filter_size)
+    model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_r'.format(
+        num_layers, learn_rate, filter_size, conv_depth)
     train(model_name, modelr, train_data, train_label_r, epochs)
 
-    model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_i'.format(num_layers, learn_rate, filter_size)
+    model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_i'.format(
+        num_layers, learn_rate, filter_size, conv_depth)
     train(model_name, modeli, train_data, train_label_r, epochs)
 
     # (TODO) Step 4: Evaluate on Test Set
     test_data, test_label_r, test_label_i = DataLoader.load_testing(records=records)
 
 # train a single unet on a small dataset
-train_unet(6, 3, 1e-4, epochs=2, records=64)
-
+#train_unet(6, 3, learn_rate=1e-4, epochs=2, records=64)
 
 # train a single unet with DSSIM loss
 #train_unet(6, 3, 1e-4, epochs=2, loss=DSSIMObjective(), records=64)
+
+# train a toy unet for the image evolution plot test
+train_unet(3, 3, learn_rate=1e-4, conv_depth=1, epochs=10, records=64)
+
 
 # train various unets on the full dataset
 # for lr in [1e-3, 1e-4, 1e-5]:
 #     for layers in [4,5,6]:
 #         for filters in [2,3,4]:
-#             train_unet(layers, filters, lr)
+#             train_unet(layers, filters, learn_rate=lr)
