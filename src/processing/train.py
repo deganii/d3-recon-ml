@@ -15,9 +15,9 @@ def train(model_name, model, data, labels, epochs, debug=False):
     """ Train a generic model and save relevant data """
     # Step 1: define all callbacks and data to log
     models_folder = Folders.models_folder()
-    model_checkpoint = ModelCheckpoint(models_folder + "{0}.h5".format(model_name),
+    model_checkpoint = ModelCheckpoint(models_folder + "{0}/weights.h5".format(model_name),
                                        monitor='val_loss', save_best_only=True)
-    csv_logger = CSVLogger(models_folder + "{0}.csv".format(model_name),
+    csv_logger = CSVLogger(models_folder + "{0}/perflog.csv".format(model_name),
                                             separator=',', append=False)
 
     os.makedirs(models_folder + model_name, exist_ok=True)
@@ -37,12 +37,12 @@ def train(model_name, model, data, labels, epochs, debug=False):
              validation_split=0.2, callbacks=[model_checkpoint, csv_logger, tensorboard])
 
     # Step 3: Plot the validation results of the model, and save the performance data
-    FitPlotter.save_plot(history.history, '{0}.png'.format(model_name))
+    FitPlotter.save_plot(history.history, '{0}/train_validation.png'.format(model_name))
 
     # (TODO) Step 3: Save other visuals
 
 
-def train_unet(num_layers, filter_size, conv_depth=32, learn_rate=1e-4, epochs = 10,
+def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epochs = 10,
                loss = 'mean_squared_error', records = -1, ):
     """ Train a unet model and save relevant data """
     # Step 1: load data
@@ -74,7 +74,7 @@ def train_unet(num_layers, filter_size, conv_depth=32, learn_rate=1e-4, epochs =
 #train_unet(6, 3, 1e-4, epochs=2, loss=DSSIMObjective(), records=64)
 
 # train a toy unet for the image evolution plot test
-train_unet(3, 3, learn_rate=1e-4, conv_depth=1, epochs=10, records=64)
+train_unet(num_layers=5, filter_size=3, learn_rate=1e-4, conv_depth=32, epochs=10, records=200)
 
 
 # train various unets on the full dataset
