@@ -42,5 +42,5 @@ class FitPlotter(object):
         plt.close(fig)
 
 # Test case
-# FitPlotter.save_fig({'acc':[0.1,0.2,0.4], 'val_acc':[0.3, 0.4, 0.6]}, 'unet-test.png')
+# FitPlotter.save_plot({'acc':[0.1,0.2,0.4], 'val_acc':[0.3, 0.4, 0.6]}, 'unet-test.png')
 

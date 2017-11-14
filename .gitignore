@@ -7,3 +7,5 @@ modules.xml
 *.pyc
 figures
 models
+predictions
+

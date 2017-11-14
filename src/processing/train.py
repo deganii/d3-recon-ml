@@ -1,4 +1,7 @@
 import os
+
+from keras_contrib.losses import DSSIMObjective
+
 from src.data.loader import DataLoader
 from keras.optimizers import Adam
 from src.archs.unet import get_unet
@@ -40,7 +43,8 @@ def train(model_name, model, data, labels, epochs, debug=False):
 
 
 
-def train_unet(num_layers, filter_size, learn_rate, epochs = 10, records = -1):
+def train_unet(num_layers, filter_size, learn_rate, epochs = 10,
+               loss = 'mean_squared_error', records = -1, ):
     """ Train a unet model and save relevant data """
     # Step 1: load data
     train_data, train_label_r, train_label_i = DataLoader.load_training(records=records)
@@ -48,9 +52,9 @@ def train_unet(num_layers, filter_size, learn_rate, epochs = 10, records = -1):
 
     # Step 2: Configure architecture
     modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=3,
-                      optimizer=Adam(lr=learn_rate), loss='mean_squared_error')
+                      optimizer=Adam(lr=learn_rate), loss=loss)
     modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=3,
-                      optimizer=Adam(lr=learn_rate), loss='mean_squared_error')
+                      optimizer=Adam(lr=learn_rate), loss=loss)
 
     # Step 3: Configure Training Parameters and Train
     model_name = 'unet_{0}_layers_{1}_lr_{2}px_filter_r'.format(num_layers, learn_rate, filter_size)
@@ -64,6 +68,10 @@ def train_unet(num_layers, filter_size, learn_rate, epochs = 10, records = -1):
 
 # train a single unet on a small dataset
 train_unet(6, 3, 1e-4, epochs=2, records=64)
+
+
+# train a single unet with DSSIM loss
+#train_unet(6, 3, 1e-4, epochs=2, loss=DSSIMObjective(), records=64)
 
 # train various unets on the full dataset
 # for lr in [1e-3, 1e-4, 1e-5]:
