@@ -1,5 +1,6 @@
 import matplotlib
 import matplotlib.mlab as mlab
+import numpy as np
 from scipy.stats import norm
 
 from src.processing.folders import Folders
@@ -25,7 +26,7 @@ class SSIMPlotter(object):
         y = mlab.normpdf(bins, mu, sigma)
         l = plt.plot(bins, y, 'r--', linewidth=2)
 
-        fig.suptitle('SSIM of ' + model_name + ': $\mu={0:.2f},\ \sigma={1:.2f}$'.format(mu, sigma),
+        fig.suptitle( model_name + '\n$\mu={0:.2f},\ \sigma={1:.2f}$'.format(mu, sigma),
                      fontsize=10, fontweight='bold')
         fig.subplots_adjust(left=0.17)
         fig.subplots_adjust(bottom=0.27)
@@ -38,4 +39,4 @@ class SSIMPlotter(object):
         plt.close(fig)
 
 # Test case
-# SSIMPlotter.save_plot('unet_test', np.asarray([0.5,0.3,0.4, 0.5,0.5, 0.4, 0.8, 0.2, 0.3, 0.4, 0.4]))
+SSIMPlotter.save_plot('unet_3_layers_0.0001_lr_3px_filter_1_convd_i', np.asarray([0.5,0.3,0.4, 0.5,0.5, 0.4, 0.8, 0.2, 0.3, 0.4, 0.4]))

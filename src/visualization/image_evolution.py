@@ -1,6 +1,8 @@
 import matplotlib
 import keras.models
+import numpy as np
 
+from src.data.loader import DataLoader
 from src.processing.folders import Folders
 matplotlib.use('Agg')
 from PIL import Image
@@ -11,19 +13,27 @@ class ImageEvolution(object):
     @classmethod
     def save_plot(cls, model_name, title=''):
         # load model
-        model = keras.models.load_model(Folders.models_folder() + model_name)
-
-        # plot and save to disk
-        full_path = Folders.figures_folder() + model_name + '_evolution.png'
+        model = keras.models.load_model(Folders.models_folder() + model_name + '.h5')
 
         inp = model.input
         outputs = [layer.output for layer in model.layers]  # all layer outputs
         functors = [K.function([inp] + [K.learning_phase()], [out]) for out in outputs]  # evaluation functions
 
-        # Testing
-        # test = np.random.random(input_shape)[np.newaxis, ...]
-        # layer_outs = [func([test, 1.]) for func in functors]
-        # layer_outs
+        data, real, imag = DataLoader.load_training(records=64)
+        data = data[np.newaxis, 0, ...]
+        layer_outs = [func([data, 1.]) for func in functors]
+
+        imgs = []
+        for lo in layer_outs:
+            for i in range(lo[0].shape[3]):
+                img_array = lo[0][0, ..., i]
+                #img_array = img_raw.reshape(img_raw.shape[1], img_raw.shape[2])
+                img_min = np.min(img_array)
+                if img_min < 0:
+                    img_array = img_array + img_min
+                img = Image.fromarray(np.transpose(np.uint8(255.0 * img_array / np.max(img_array))))
+                imgs.append(img)
+        ImageEvolution.saveTiledImages(imgs, model_name, n_columns=8)
 
 
     @classmethod
@@ -32,9 +42,9 @@ class ImageEvolution(object):
             images = [Image.open(f) for f in images]
 
         # resize all images to the same size
-        for i in len(1, images):
-            if(images[i].size != images[0].size):
-                images[i] = images[i].resize( images[0].size, resample = Image.BICUBIC)
+        for i in range(len(images)):
+            if images[i].size != images[0].size:
+                images[i] = images[i].resize( images[0].size, resample=Image.BICUBIC)
 
         width, height = images[0].size
         width, height = width - 2*cropx, height - 2*cropy
@@ -50,11 +60,12 @@ class ImageEvolution(object):
                 x0 = col * width - cropx
                 tile = images[row*n_columns+col]
                 image.paste(tile, (x0,y0))
-        # image.save(destination)
+        full_path = Folders.figures_folder() + model_name + '_evolution.png'
+        image.save(full_path)
         # send back the tiled img
         return image
 
 
 # Test case
-# ImageEvolution.save_plot('unet-test.png')
+# ImageEvolution.save_plot('unet_3_layers_0.0001_lr_3px_filter_1_convd_r')
 

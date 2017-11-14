@@ -22,14 +22,14 @@ class FitPlotter(object):
         fig.suptitle('', fontsize=10, fontweight='bold')
         ax = fig.add_subplot(111)
         ax.set_xlabel('Epoch')
-        ax.set_ylabel('SSIM')
+        ax.set_ylabel('Loss')
 
         epochs = len(history['loss'])
         epoch_dt = [i+1 for i in range(epochs)]
 
-        ax.plot(epoch_dt, 1 - 2 * np.asarray(history['loss']),
+        ax.plot(epoch_dt, history['loss'],
                 label='Train', linewidth=0.5)
-        ax.plot(epoch_dt, 1 - 2 * np.asarray(history['val_loss']),
+        ax.plot(epoch_dt, history['val_loss'],
                 label='Validation', linewidth=0.5)
         ax.legend()
         fig.subplots_adjust(left = 0.17)
@@ -44,5 +44,5 @@ class FitPlotter(object):
         plt.close(fig)
 
 # Test case
-# FitPlotter.save_plot({'loss':[0.235,0.236,0.237], 'val_loss':[0.3, 0.4, 0.6]}, 'unet-test.png')
+FitPlotter.save_plot({'loss':[0.235,0.236,0.237], 'val_loss':[0.334, 0.432, 0.653]}, 'unet-test.png')
 

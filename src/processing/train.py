@@ -11,7 +11,7 @@ from src.processing.folders import Folders
 from src.visualization.fit_plotter import FitPlotter
 
 
-def train(model_name, model, data, labels, epochs, debug=False):
+def train(model_name, model, data, labels, epochs, save_summary=True):
     """ Train a generic model and save relevant data """
     # Step 1: define all callbacks and data to log
     models_folder = Folders.models_folder()
@@ -26,8 +26,11 @@ def train(model_name, model, data, labels, epochs, debug=False):
                               write_images=False, embeddings_freq=0,
                               embeddings_layer_names=None, embeddings_metadata=None)
 
-    if debug:
-        model.summary()
+    if save_summary:
+        def summary_saver(s):
+            with open(models_folder + model_name + '/summary.txt', 'a+') as f:
+                print(s, file=f)
+        model.summary(print_fn=summary_saver)
 
     # Step 2: train and save best weights for the given architecture
     print('-' * 30)
@@ -50,9 +53,9 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
     img_rows, img_cols = train_data.shape[1], train_data.shape[2]
 
     # Step 2: Configure architecture
-    modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=3,
+    modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                       conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
-    modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=3,
+    modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                       conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
 
     # Step 3: Configure Training Parameters and Train
@@ -74,7 +77,7 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
 #train_unet(6, 3, 1e-4, epochs=2, loss=DSSIMObjective(), records=64)
 
 # train a toy unet for the image evolution plot test
-train_unet(num_layers=5, filter_size=3, learn_rate=1e-4, conv_depth=32, epochs=10, records=200)
+train_unet(num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
 
 
 # train various unets on the full dataset
