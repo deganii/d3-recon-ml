@@ -1,5 +1,5 @@
 import os
-
+import numpy as np
 from keras_contrib.losses import DSSIMObjective
 
 from src.data.loader import DataLoader
@@ -42,6 +42,13 @@ def train(model_name, model, data, labels, epochs, save_summary=True):
     # Step 3: Plot the validation results of the model, and save the performance data
     FitPlotter.save_plot(history.history, '{0}/train_validation.png'.format(model_name))
 
+    val_loss = np.asarray(history.history['val_loss'])
+    min_loss_epoch = np.argmin(val_loss)
+    min_train_loss = history.history['loss'][min_loss_epoch]
+
+    return min_loss_epoch, min_train_loss, val_loss[min_loss_epoch]
+
+
     # (TODO) Step 3: Save other visuals
 
 
@@ -61,15 +68,16 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
     # Step 3: Configure Training Parameters and Train
     model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_r'.format(
         num_layers, learn_rate, filter_size, conv_depth)
-    avg_loss_r = train(model_name_r, modelr, train_data, train_label_r, epochs)
+    epoch_r, train_loss_r, val_loss_r = train(model_name_r, modelr, train_data, train_label_r, epochs)
 
     model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_i'.format(
         num_layers, learn_rate, filter_size, conv_depth)
-    avg_loss_i = train(model_name_i, modeli, train_data, train_label_r, epochs)
+    epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli, train_data, train_label_r, epochs)
 
     # (TODO) Step 4: Evaluate on Test Set
-    test_data, test_label_r, test_label_i = DataLoader.load_testing(records=records)
-    return model_name_r,model_name_i,avg_loss_r,avg_loss_i
+    #test_data, test_label_r, test_label_i = DataLoader.load_testing(records=records)
+    return model_name_r, epoch_r, train_loss_r, val_loss_r, \
+           model_name_i, epoch_i, train_loss_i, val_loss_i
 
 # train a single unet on a small dataset
 #train_unet(6, 3, learn_rate=1e-4, epochs=2, records=64)
@@ -78,7 +86,7 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
 #train_unet(6, 3, 1e-4, epochs=2, loss=DSSIMObjective(), records=64)
 
 # train a toy unet for the image evolution plot test
-train_unet(num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
+#train_unet(num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
 
 
 
