@@ -32,7 +32,7 @@ class FitPlotter(object):
         ax.plot(epoch_dt, history['val_loss'],
                 label='Validation', linewidth=0.5)
         ax.legend()
-        fig.subplots_adjust(left = 0.17)
+        fig.subplots_adjust(left = 0.24)
         fig.subplots_adjust(bottom = 0.27)
         fig.subplots_adjust(right = 0.96)
         fig.subplots_adjust(top = 0.94)
@@ -44,5 +44,4 @@ class FitPlotter(object):
         plt.close(fig)
 
 # Test case
-FitPlotter.save_plot({'loss':[0.235,0.236,0.237], 'val_loss':[0.334, 0.432, 0.653]}, 'unet-test.png')
-
+FitPlotter.save_plot({'loss':[0.237664829282,0.237664833081], 'val_loss':[0.236981078982, 0.236981078982]}, 'unet-test.png')
