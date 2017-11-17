@@ -13,7 +13,7 @@ df = pd.DataFrame(columns=['Learning Rate','Num Layers','Filter Size','Conv Dept
 for lr in [1e-5, 1e-4, 1e-3]:
     for layers in [7,6,5,4]:
         for filters in [4,3,2]:
-            for convdepth in [64,32,2]:
+            for convdepth in [32,2]:
                 model_name_r, epoch_r, train_loss_r, val_loss_r, \
                 model_name_i, epoch_i, train_loss_i, val_loss_i = \
                     train_unet(layers, filters, learn_rate=lr,
