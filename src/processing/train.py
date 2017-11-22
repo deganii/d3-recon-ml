@@ -23,7 +23,7 @@ def train(model_name, model, data, labels, epochs, save_summary=True):
     os.makedirs(models_folder + model_name, exist_ok=True)
     tensorboard = TensorBoard(log_dir=models_folder + model_name, histogram_freq=0,
                               batch_size=32, write_graph=True, write_grads=False,
-                              write_images=False, embeddings_freq=0,
+                              write_images=True, embeddings_freq=0,
                               embeddings_layer_names=None, embeddings_metadata=None)
 
     if save_summary:
@@ -65,13 +65,18 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
     modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                       conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
 
+    if loss == 'mean_squared_error':
+        loss_abbrev = 'msq'
+    elif isinstance(loss, DSSIMObjective):
+        loss_abbrev = 'dssim'
+
     # Step 3: Configure Training Parameters and Train
-    model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_r'.format(
-        num_layers, learn_rate, filter_size, conv_depth)
+    model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_r'.format(
+        num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
     epoch_r, train_loss_r, val_loss_r = train(model_name_r, modelr, train_data, train_label_r, epochs)
 
-    model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_i'.format(
-        num_layers, learn_rate, filter_size, conv_depth)
+    model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
+        num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
     epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli, train_data, train_label_r, epochs)
 
     # (TODO) Step 4: Evaluate on Test Set
@@ -83,7 +88,8 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
 #train_unet(6, 3, learn_rate=1e-4, epochs=2, records=64)
 
 # train a single unet with DSSIM loss
-#train_unet(6, 3, 1e-4, epochs=2, loss=DSSIMObjective(), records=64)
+# train_unet(num_layers=6, filter_size=3, learn_rate=1e-4,
+#           epochs=2, loss=DSSIMObjective(), records=64)
 
 # train a toy unet for the image evolution plot test
 #train_unet(num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
