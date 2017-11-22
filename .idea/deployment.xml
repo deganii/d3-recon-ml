@@ -11,6 +11,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/data" />
             <excludedPath local="true" path="$PROJECT_DIR$/models" />
             <excludedPath local="true" path="$PROJECT_DIR$/figures" />
+            <excludedPath local="true" path="$PROJECT_DIR$/predictions" />
           </excludedPaths>
         </serverdata>
       </paths>
