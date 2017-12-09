@@ -11,6 +11,7 @@ import keras.backend as K
 from src.processing.folders import Folders
 from src.visualization.fit_plotter import FitPlotter
 from keras.utils import generic_utils
+import pandas as pd
 
 def get_callbacks(model_name, batch_size = 32):
     models_folder = Folders.models_folder()
@@ -109,8 +110,6 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
         generator_modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                       conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
 
-        print(generator_modelr.summary())
-
         # Create discriminator model
         img_dim = (img_rows, img_cols, 1)
         discriminator_model = DCGAN_discriminator(img_dim)
@@ -121,10 +120,25 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
 
         loss = [l1_loss, 'binary_crossentropy']
         loss_weights = [1E1, 1]
-        dcgan_model.compile(loss=loss, loss_weights=loss_weights, optimizer=opt_dcgan)
+        dcgan_model.compile(loss=loss, loss_weights=loss_weights, optimizer=opt_dcgan
+                            )
 
         discriminator_model.trainable = True
-        discriminator_model.compile(loss='binary_crossentropy', optimizer=opt_discriminator)
+        discriminator_model.compile(loss='binary_crossentropy', optimizer=opt_discriminator
+                                    )
+
+        print(generator_modelr.summary())
+        print(discriminator_model.summary())
+        print(dcgan_model.summary())
+
+        models_folder = Folders.models_folder()
+        model_name_prefix = models_folder + 'dcgan_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_r'.format(
+            num_layers, learn_rate, filter_size, conv_depth)
+
+        os.makedirs(model_name_prefix, exist_ok=True)
+        # train various unets on the full dataset
+        df = pd.DataFrame(columns=['Epoch', 'Batch', 'D logloss', "G tot", "G L1", "G logloss"])
+
 
         # Start training
         for e in range(epochs):
@@ -135,7 +149,7 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
             batchGenerator = DataLoader.batch_data(train_data, train_label_r, batch_size)
             progbar = generic_utils.Progbar(train_data.shape[0])
             fake = True
-
+            batch_counter = 0
             for (data_batch, label_r_batch) in batchGenerator:
 
                 # Create a "real" or "fake" batch to feed the discriminator model
@@ -169,6 +183,24 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
                                                 ("G tot", gen_loss[0]),
                                                 ("G L1", gen_loss[1]),
                                                 ("G logloss", gen_loss[2])])
+                # write to CSV
+                batch_counter += 2*batch_size
+                pd.DataFrame(columns=['Epoch', 'Batch', 'D logloss', "G tot", "G L1", "G logloss"])
+                df.loc[len(df)] = [e,batch_counter,disc_loss,gen_loss[0],gen_loss[1], gen_loss[2]]
+                df.to_csv(model_name_prefix + '/perflog.csv')
+
+            if e % 2 == 0:
+                # save the generator weights
+                gen_weights_path = model_name_prefix + '/gen_{0}_epochs.h5'.format(e)
+                generator_modelr.save_weights(gen_weights_path, overwrite=True)
+
+                disc_weights_path = model_name_prefix + '/disc_{0}_epochs.h5'.format(e)
+                discriminator_model.save_weights(disc_weights_path, overwrite=True)
+
+                dcgan_weights_path = model_name_prefix + '/dcgan_{0}_epochs.h5'.format(e)
+                dcgan_model.save(dcgan_weights_path, overwrite=True)
+
+        return model_name_prefix
 
 
 # train a single unet on a small dataset
@@ -181,6 +213,10 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
 # train a toy unet for the image evolution plot test
 #train_unet(num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
 
-# train a UNET + DCGAN
-# train_dcgan(num_layers=3, filter_size=3, conv_depth=1, learn_rate=1e-3, epochs=2,
+# train a toy UNET + DCGAN
+#train_dcgan(num_layers=3, filter_size=3, conv_depth=2, learn_rate=1e-3, epochs=2,
 #                 loss='mean_squared_error', records=64, batch_size=2)
+
+# train a large UNET + DCGAN
+train_dcgan(num_layers=6, filter_size=3, conv_depth=32, learn_rate=1e-3, epochs=15,
+                  loss='mean_squared_error', records=-1, batch_size=32)

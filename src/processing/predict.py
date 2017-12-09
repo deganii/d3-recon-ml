@@ -26,8 +26,13 @@ def format_and_save(img_array, output_file, normalize=None):
     scipy.misc.imsave(output_file, img)
 
 
-def prediction(model_name, data, labels):
-    model = keras.models.load_model(Folders.models_folder() + model_name+'/weights.h5')
+def prediction(model_name, data, labels, weights_file='weights.h5'):
+    from src.processing.train import get_unet
+    from keras.optimizers import Adam
+    #model = get_unet(192, 192, num_layers=6, filter_size=3,
+    #                            conv_depth=32, optimizer=Adam(lr=1e-3), loss='mse')
+    #model.load_weights(Folders.models_folder() + model_name + '/' + weights_file)
+    model = keras.models.load_model(Folders.models_folder() + model_name + '/' + weights_file)
     mp_folder = Folders.predictions_folder() + model_name + '/'
     os.makedirs(mp_folder, exist_ok=True)
     predictions = model.predict(data, batch_size=32, verbose=0)
@@ -55,5 +60,7 @@ def prediction(model_name, data, labels):
     SSIMPlotter.save_plot(model_name, ssim)
     return ssim
 
-# data, label_r, label_i = DataLoader.load_testing(records=64)
+#data, label_r, label_i = DataLoader.load_testing(records=64)
 # prediction('unet_6_layers_1e-05_lr_3px_filter_32_convd_i_retrain_50_epoch_mse', data, label_i)
+#ssim_r = prediction('dcgan_6_layers_0.001_lr_3px_filter_32_convd_r', data, label_r, weights_file='gen_4_epochs.h5')
+#print(np.mean(ssim_r))
