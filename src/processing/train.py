@@ -5,15 +5,14 @@ from keras_contrib.losses import DSSIMObjective
 from src.data.loader import DataLoader
 from keras.optimizers import Adam
 from src.archs.unet import get_unet
+from src.archs.dcgan import DCGAN, DCGAN_discriminator
 from keras.callbacks import ModelCheckpoint, CSVLogger, TensorBoard
-
+import keras.backend as K
 from src.processing.folders import Folders
 from src.visualization.fit_plotter import FitPlotter
+from keras.utils import generic_utils
 
-
-def train(model_name, model, data, labels, epochs, save_summary=True):
-    """ Train a generic model and save relevant data """
-    # Step 1: define all callbacks and data to log
+def get_callbacks(model_name, batch_size = 32):
     models_folder = Folders.models_folder()
     model_checkpoint = ModelCheckpoint(models_folder + "{0}/weights.h5".format(model_name),
                                        monitor='val_loss', save_best_only=True)
@@ -22,9 +21,16 @@ def train(model_name, model, data, labels, epochs, save_summary=True):
 
     os.makedirs(models_folder + model_name, exist_ok=True)
     tensorboard = TensorBoard(log_dir=models_folder + model_name, histogram_freq=0,
-                              batch_size=32, write_graph=True, write_grads=False,
+                              batch_size=batch_size, write_graph=True, write_grads=False,
                               write_images=True, embeddings_freq=0,
                               embeddings_layer_names=None, embeddings_metadata=None)
+    return [model_checkpoint, csv_logger, tensorboard]
+
+
+def train(model_name, model, data, labels, epochs, save_summary=True, batch_size = 32):
+    """ Train a generic model and save relevant data """
+
+    models_folder = Folders.models_folder()
 
     if save_summary:
         def summary_saver(s):
@@ -36,8 +42,8 @@ def train(model_name, model, data, labels, epochs, save_summary=True):
     print('-' * 30)
     print('Fitting model {0}...'.format(model_name))
     print('-' * 30)
-    history = model.fit(data, labels, batch_size=32, epochs=epochs, verbose=1, shuffle=True,
-             validation_split=0.2, callbacks=[model_checkpoint, csv_logger, tensorboard])
+    history = model.fit(data, labels, batch_size=batch_size, epochs=epochs, verbose=1, shuffle=True,
+             validation_split=0.2, callbacks=get_callbacks(model_name, batch_size=batch_size))
 
     # Step 3: Plot the validation results of the model, and save the performance data
     FitPlotter.save_plot(history.history, '{0}/train_validation.png'.format(model_name))
@@ -53,7 +59,7 @@ def train(model_name, model, data, labels, epochs, save_summary=True):
 
 
 def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epochs = 10,
-               loss = 'mean_squared_error', records = -1, ):
+               loss = 'mean_squared_error', records = -1):
     """ Train a unet model and save relevant data """
     # Step 1: load data
     train_data, train_label_r, train_label_i = DataLoader.load_training(records=records)
@@ -84,6 +90,87 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
     return model_name_r, epoch_r, train_loss_r, val_loss_r, \
            model_name_i, epoch_i, train_loss_i, val_loss_i
 
+
+def l1_loss(y_true, y_pred):
+    return K.sum(K.abs(y_pred - y_true), axis=-1)
+
+def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epochs = 10,
+               loss = 'mean_squared_error', records = -1, batch_size = 32):
+
+        # Load data
+        train_data, train_label_r, train_label_i = DataLoader.load_training(records=records)
+        img_rows, img_cols = train_data.shape[1], train_data.shape[2]
+
+        # Create optimizers
+        opt_dcgan = Adam(lr=learn_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+        opt_discriminator = Adam(lr=learn_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+
+        # Create generator model (U-NET)
+        generator_modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
+                      conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
+
+        print(generator_modelr.summary())
+
+        # Create discriminator model
+        img_dim = (img_rows, img_cols, 1)
+        discriminator_model = DCGAN_discriminator(img_dim)
+
+        generator_modelr.compile(loss='mae', optimizer=opt_discriminator)
+        discriminator_model.trainable = False
+        dcgan_model = DCGAN(generator_modelr, discriminator_model, img_dim)
+
+        loss = [l1_loss, 'binary_crossentropy']
+        loss_weights = [1E1, 1]
+        dcgan_model.compile(loss=loss, loss_weights=loss_weights, optimizer=opt_dcgan)
+
+        discriminator_model.trainable = True
+        discriminator_model.compile(loss='binary_crossentropy', optimizer=opt_discriminator)
+
+        # Start training
+        for e in range(epochs):
+            # shuffle the deck
+            p = np.random.permutation(train_data.shape[0])
+            train_data, train_label_r = train_data[p], train_label_r[p]
+
+            batchGenerator = DataLoader.batch_data(train_data, train_label_r, batch_size)
+            progbar = generic_utils.Progbar(train_data.shape[0])
+            fake = True
+
+            for (data_batch, label_r_batch) in batchGenerator:
+
+                # Create a "real" or "fake" batch to feed the discriminator model
+                if fake:  # Produce a forgery
+                    X_disc = generator_modelr.predict(data_batch)
+                    y_disc = np.zeros((X_disc.shape[0], 2), dtype=np.uint8)
+                    y_disc[:, 0] = 1
+                else:  # Supply the real thing
+                    X_disc = label_r_batch
+                    y_disc = np.zeros((X_disc.shape[0], 2), dtype=np.uint8)
+                fake = not fake
+
+                # Update the discriminator
+                disc_loss = discriminator_model.train_on_batch(X_disc, y_disc)
+
+                try:  # Get a batch to feed the generator model
+                    X_gen, X_gen_target = next(batchGenerator)
+                except StopIteration:
+                    break
+
+                y_gen = np.zeros((X_gen.shape[0], 2), dtype=np.uint8)
+                y_gen[:, 1] = 1
+
+                # Freeze the discriminator
+                discriminator_model.trainable = False
+                gen_loss = dcgan_model.train_on_batch(X_gen, [X_gen_target, y_gen])
+                # Unfreeze the discriminator
+                discriminator_model.trainable = True
+
+                progbar.add(2*batch_size, values=[("D logloss", disc_loss),
+                                                ("G tot", gen_loss[0]),
+                                                ("G L1", gen_loss[1]),
+                                                ("G logloss", gen_loss[2])])
+
+
 # train a single unet on a small dataset
 #train_unet(6, 3, learn_rate=1e-4, epochs=2, records=64)
 
@@ -94,5 +181,6 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
 # train a toy unet for the image evolution plot test
 #train_unet(num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
 
-
-
+# train a UNET + DCGAN
+# train_dcgan(num_layers=3, filter_size=3, conv_depth=1, learn_rate=1e-3, epochs=2,
+#                 loss='mean_squared_error', records=64, batch_size=2)

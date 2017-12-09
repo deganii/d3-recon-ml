@@ -23,12 +23,25 @@ class DataLoader(object):
             return raw['data'], raw['labels'][:, 0, ...], raw['labels'][:, 1, ...]
 
     @classmethod
-    def load_training(self, dataset='ds-lymphoma', records=-1):
+    def load_training(cls, dataset='ds-lymphoma', records=-1):
         return DataLoader.load(dataset=dataset, set='training', records=records)
 
     @classmethod
-    def load_testing(self, dataset='ds-lymphoma', records=-1):
+    def load_testing(cls, dataset='ds-lymphoma', records=-1):
         return DataLoader.load(dataset=dataset, set='test', records=records)
+
+    @classmethod
+    def batch_data(cls, train_data, train_labels, batch_size):
+        """ Simple sequential chunks of data """
+        for batch in range(int(np.ceil(train_data.shape[0] / batch_size))):
+            start = batch_size * batch
+            end = start + batch_size
+            if end > train_data.shape[0]:
+                yield train_data[-batch_size:, ...], \
+                        train_labels[-batch_size:, ...]
+            else:
+                yield train_data[start:end, ...], \
+                        train_labels[start:end, ...]
 
 # Load just 64 training records
 # DataLoader.load_training(records=64)

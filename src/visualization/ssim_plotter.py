@@ -39,4 +39,5 @@ class SSIMPlotter(object):
         plt.close(fig)
 
 # Test case
-SSIMPlotter.save_plot('unet_3_layers_0.0001_lr_3px_filter_1_convd_i', np.asarray([0.5,0.3,0.4, 0.5,0.5, 0.4, 0.8, 0.2, 0.3, 0.4, 0.4]))
+# SSIMPlotter.save_plot('unet_3_layers_0.0001_lr_3px_filter_1_convd_i',
+#                      np.asarray([0.5, 0.3, 0.4, 0.5, 0.5, 0.4, 0.8, 0.2, 0.3, 0.4, 0.4]))

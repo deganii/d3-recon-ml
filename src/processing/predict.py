@@ -1,18 +1,27 @@
 import keras.models
+import keras.losses
 import scipy.misc
 import numpy as np
 import skimage.measure
 import os
+from keras_contrib.losses import DSSIMObjective
+keras.losses.dssim = DSSIMObjective()
+
+# from keras.utils.generic_utils import get_custom_objects
+#
+# loss = DSSIMObjective()
+# get_custom_objects().update({"dssim": loss})
+
 
 from src.data.loader import DataLoader
 from src.processing.folders import Folders
 from PIL import Image
 from src.visualization.ssim_plotter import SSIMPlotter
 
-def format_and_save(img_array, output_file, normalize=False):
+def format_and_save(img_array, output_file, normalize=None):
     img_array = img_array.reshape([192, 192])
-    if normalize:
-        img_array = img_array + np.abs(np.min(img_array))
+    if normalize is not None:
+        img_array = img_array + normalize
     img = Image.fromarray(np.transpose(np.uint8(255.0 * img_array / np.max(img_array))))
     scipy.misc.imsave(output_file, img)
 
@@ -21,7 +30,7 @@ def prediction(model_name, data, labels):
     model = keras.models.load_model(Folders.models_folder() + model_name+'/weights.h5')
     mp_folder = Folders.predictions_folder() + model_name + '/'
     os.makedirs(mp_folder, exist_ok=True)
-    predictions = model.predict(data, batch_size=32, verbose=0, steps=None)
+    predictions = model.predict(data, batch_size=32, verbose=0)
     predictions=predictions.astype(np.float64)
     predictions=predictions.reshape([data.shape[0],data.shape[1], data.shape[2]])
     labels=labels.reshape([labels.shape[0],labels.shape[1],labels.shape[2]])
@@ -30,9 +39,10 @@ def prediction(model_name, data, labels):
         file_prefix = mp_folder + '{0:05}-'.format(i)
         # calculate the structural similarity index (SSIM) between prediction and source
         ssim[i] = skimage.measure.compare_ssim(predictions[i], labels[i])
-        format_and_save(data[i], file_prefix + 'input.png', False)
-        format_and_save(predictions[i], file_prefix + 'pred.png', True)
-        format_and_save(labels[i], file_prefix + 'label.png', True)
+        format_and_save(data[i], file_prefix + 'input.png')
+        normalize = np.abs(min(np.min(predictions[i]), np.min(labels[i])))
+        format_and_save(predictions[i], file_prefix + 'pred.png', normalize)
+        format_and_save(labels[i], file_prefix + 'label.png', normalize)
 
     # calculate and save statistics over SSIM
     header = 'Structural Similarity Indices for {0}\n'.format(model_name)
@@ -45,5 +55,5 @@ def prediction(model_name, data, labels):
     SSIMPlotter.save_plot(model_name, ssim)
     return ssim
 
-#data,label_r,label_i=DataLoader.load_testing(records=64)
-#prediction('unet_3_layers_0.0001_lr_3px_filter_1_convd_r', data, label_r)
+# data, label_r, label_i = DataLoader.load_testing(records=64)
+# prediction('unet_6_layers_1e-05_lr_3px_filter_32_convd_i_retrain_50_epoch_mse', data, label_i)

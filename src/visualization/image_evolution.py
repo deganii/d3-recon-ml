@@ -13,7 +13,7 @@ class ImageEvolution(object):
     @classmethod
     def save_plot(cls, model_name, title=''):
         # load model
-        model = keras.models.load_model(Folders.models_folder() + model_name + '.h5')
+        model = keras.models.load_model(Folders.models_folder() + model_name + '/weights.h5')
 
         inp = model.input
         outputs = [layer.output for layer in model.layers]  # all layer outputs
@@ -67,5 +67,6 @@ class ImageEvolution(object):
 
 
 # Test case
-# ImageEvolution.save_plot('unet_3_layers_0.0001_lr_3px_filter_1_convd_r')
+# ImageEvolution.save_plot('unet_6_layers_1e-05_lr_3px_filter_32_convd_r_retrain_100_epoch_mse')
+
 

@@ -7,7 +7,6 @@ class ModelInfo(object):
         # load the info summary
 
 
-
     @classmethod
     def get_name(cls, num_layers, learn_rate, filter_size, conv_depth):
         '''Generate a name for a model given params'''
