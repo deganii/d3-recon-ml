@@ -19,8 +19,6 @@ def get_callbacks(model_name, batch_size = 32):
                                        monitor='val_loss', save_best_only=True)
     csv_logger = CSVLogger(models_folder + "{0}/perflog.csv".format(model_name),
                                             separator=',', append=False)
-
-    os.makedirs(models_folder + model_name, exist_ok=True)
     tensorboard = TensorBoard(log_dir=models_folder + model_name, histogram_freq=0,
                               batch_size=batch_size, write_graph=True, write_grads=False,
                               write_images=True, embeddings_freq=0,
@@ -30,9 +28,9 @@ def get_callbacks(model_name, batch_size = 32):
 
 def train(model_name, model, data, labels, epochs, save_summary=True, batch_size = 32):
     """ Train a generic model and save relevant data """
-
     models_folder = Folders.models_folder()
-
+    os.makedirs(models_folder + model_name, exist_ok=True)
+    
     if save_summary:
         def summary_saver(s):
             with open(models_folder + model_name + '/summary.txt', 'a+') as f:
@@ -218,5 +216,5 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
 #                 loss='mean_squared_error', records=64, batch_size=2)
 
 # train a large UNET + DCGAN
-train_dcgan(num_layers=6, filter_size=3, conv_depth=32, learn_rate=1e-3, epochs=15,
-                  loss='mean_squared_error', records=-1, batch_size=32)
+# train_dcgan(num_layers=7, filter_size=3, conv_depth=32, learn_rate=1e-3, epochs=15,
+#                   loss='mean_squared_error', records=-1, batch_size=32)
