@@ -30,4 +30,4 @@ def surface_plot(x_label='Filter Size',y_label='Num Layers',z_label='Val Loss R'
     ax.plot_trisurf(X, Y, Z,cmap='viridis')
     return plt.show()
 
-surface_plot()
+surface_plot(x_label='Filter Size')
