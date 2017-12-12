@@ -13,10 +13,13 @@ from src.visualization.fit_plotter import FitPlotter
 from keras.utils import generic_utils
 import pandas as pd
 
-def get_callbacks(model_name, batch_size = 32):
+def get_callbacks(model_name, batch_size = 32, save_best_only = True):
     models_folder = Folders.models_folder()
-    model_checkpoint = ModelCheckpoint(models_folder + "{0}/weights.h5".format(model_name),
-                                       monitor='val_loss', save_best_only=True)
+    file_suffix = '_{epoch:02d}.h5'
+    if save_best_only:
+        file_suffix = '.h5'
+    model_checkpoint = ModelCheckpoint(models_folder + "{0}/weights".format(model_name) + file_suffix,
+                                       monitor='val_loss', save_best_only=save_best_only)
     csv_logger = CSVLogger(models_folder + "{0}/perflog.csv".format(model_name),
                                             separator=',', append=False)
     tensorboard = TensorBoard(log_dir=models_folder + model_name, histogram_freq=0,
@@ -26,11 +29,11 @@ def get_callbacks(model_name, batch_size = 32):
     return [model_checkpoint, csv_logger, tensorboard]
 
 
-def train(model_name, model, data, labels, epochs, save_summary=True, batch_size = 32):
+def train(model_name, model, data, labels, epochs, save_summary=True, batch_size = 32, save_best_only = True):
     """ Train a generic model and save relevant data """
     models_folder = Folders.models_folder()
     os.makedirs(models_folder + model_name, exist_ok=True)
-    
+
     if save_summary:
         def summary_saver(s):
             with open(models_folder + model_name + '/summary.txt', 'a+') as f:
@@ -42,7 +45,7 @@ def train(model_name, model, data, labels, epochs, save_summary=True, batch_size
     print('Fitting model {0}...'.format(model_name))
     print('-' * 30)
     history = model.fit(data, labels, batch_size=batch_size, epochs=epochs, verbose=1, shuffle=True,
-             validation_split=0.2, callbacks=get_callbacks(model_name, batch_size=batch_size))
+             validation_split=0.2, callbacks=get_callbacks(model_name, batch_size=batch_size, save_best_only=save_best_only))
 
     # Step 3: Plot the validation results of the model, and save the performance data
     FitPlotter.save_plot(history.history, '{0}/train_validation.png'.format(model_name))
@@ -67,8 +70,8 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
     # Step 2: Configure architecture
     modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                       conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
-    modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
-                      conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
+    # modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
+    #                   conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
 
     if loss == 'mean_squared_error':
         loss_abbrev = 'msq'
@@ -80,14 +83,15 @@ def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epoc
         num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
     epoch_r, train_loss_r, val_loss_r = train(model_name_r, modelr, train_data, train_label_r, epochs)
 
-    model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
-        num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
-    epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli, train_data, train_label_r, epochs)
+    # model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
+    #     num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
+    # epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli, train_data, train_label_r, epochs)
 
     # (TODO) Step 4: Evaluate on Test Set
     #test_data, test_label_r, test_label_i = DataLoader.load_testing(records=records)
     return model_name_r, epoch_r, train_loss_r, val_loss_r, \
-           model_name_i, epoch_i, train_loss_i, val_loss_i
+        'NoRun', 0, 0.0, 0.0
+           # model_name_i, epoch_i, train_loss_i, val_loss_i
 
 
 def l1_loss(y_true, y_pred):
@@ -218,3 +222,6 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
 # train a large UNET + DCGAN
 # train_dcgan(num_layers=7, filter_size=3, conv_depth=32, learn_rate=1e-3, epochs=15,
 #                   loss='mean_squared_error', records=-1, batch_size=32)
+
+
+# train_unet(num_layers=6, filter_size=3, learn_rate=1e-4, conv_depth=32, epochs=18, records=-1)

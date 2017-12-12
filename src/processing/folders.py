@@ -24,3 +24,8 @@ class Folders(object):
     @classmethod
     def predictions_folder(cls):
         return Folders.get_folder('predictions')
+
+    @classmethod
+    def visualizations_folder(cls):
+        return Folders.get_folder('visualizations')
+
