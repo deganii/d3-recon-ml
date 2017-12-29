@@ -12,6 +12,9 @@ from src.processing.folders import Folders
 from src.visualization.fit_plotter import FitPlotter
 from keras.utils import generic_utils
 import pandas as pd
+import inspect
+import csv
+
 
 def get_callbacks(model_name, batch_size = 32, save_best_only = True):
     models_folder = Folders.models_folder()
@@ -29,16 +32,23 @@ def get_callbacks(model_name, batch_size = 32, save_best_only = True):
     return [model_checkpoint, csv_logger, tensorboard]
 
 
-def train(model_name, model, data, labels, epochs, save_summary=True, batch_size = 32, save_best_only = True):
+def train(model_name, model, data, labels, epochs, save_summary=True,
+          batch_size=32, save_best_only=True, model_metadata=None):
     """ Train a generic model and save relevant data """
     models_folder = Folders.models_folder()
     os.makedirs(models_folder + model_name, exist_ok=True)
 
     if save_summary:
         def summary_saver(s):
-            with open(models_folder + model_name + '/summary.txt', 'a+') as f:
+            with open(models_folder + model_name + '/summary.txt', 'w') as f:
                 print(s, file=f)
         model.summary(print_fn=summary_saver)
+
+    if model_metadata is not None:
+        # save to a csv
+        with open(models_folder + model_name +'/metadata.csv', 'w') as f:
+            w = csv.writer(f)
+            w.writerows(model_metadata.items())
 
     # Step 2: train and save best weights for the given architecture
     print('-' * 30)
@@ -60,45 +70,69 @@ def train(model_name, model, data, labels, epochs, save_summary=True, batch_size
     # (TODO) Step 3: Save other visuals
 
 
-def train_unet(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-4, epochs = 10,
-               loss = 'mean_squared_error', records = -1):
+def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
+               learn_rate=1e-4, epochs=18, loss='mse', records=-1,
+               separate=True, last_activation='relu', batch_size=32):
     """ Train a unet model and save relevant data """
-    # Step 1: load data
-    train_data, train_label_r, train_label_i = DataLoader.load_training(records=records)
-    img_rows, img_cols = train_data.shape[1], train_data.shape[2]
 
-    # Step 2: Configure architecture
-    modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
-                      conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
-    # modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
-    #                   conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss)
-
-    if loss == 'mean_squared_error':
-        loss_abbrev = 'msq'
-    elif isinstance(loss, DSSIMObjective):
+    loss_abbrev = loss
+    if isinstance(loss, DSSIMObjective):
         loss_abbrev = 'dssim'
 
-    # Step 3: Configure Training Parameters and Train
-    model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_r'.format(
-        num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
-    epoch_r, train_loss_r, val_loss_r = train(model_name_r, modelr, train_data, train_label_r, epochs)
+    # gather up the params
+    frame = inspect.currentframe()
+    _, _, _, values = inspect.getargvalues(frame)
 
-    # model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
-    #     num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
-    # epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli, train_data, train_label_r, epochs)
+    # Step 1: load data
+    d_raw = DataLoader.load_training(records=records, separate=separate)
 
-    # (TODO) Step 4: Evaluate on Test Set
-    #test_data, test_label_r, test_label_i = DataLoader.load_testing(records=records)
-    return model_name_r, epoch_r, train_loss_r, val_loss_r, \
-        'NoRun', 0, 0.0, 0.0
-           # model_name_i, epoch_i, train_loss_i, val_loss_i
+    # Step 2: Configure architecture
+    if separate:
+        train_data, train_label_r, train_label_i = d_raw
+        img_rows, img_cols = train_data.shape[1], train_data.shape[2]
 
+        modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
+                          conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
+                          last_activation=last_activation, output_depth=1)
+        modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
+                           conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
+                          last_activation=last_activation, output_depth=1)
+
+        # Step 3: Configure Training Parameters and Train
+        model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_r'.format(
+            num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
+        epoch_r, train_loss_r, val_loss_r = train(model_name_r, modelr,
+            train_data, train_label_r, epochs, model_metadata=values,
+            batch_size=batch_size)
+
+        model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
+            num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
+        epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli,
+            train_data, train_label_r, epochs, model_metadata=values,
+            batch_size=batch_size)
+
+        return model_name_r, epoch_r, train_loss_r, val_loss_r, \
+             model_name_i, epoch_i, train_loss_i, val_loss_i
+    else:
+        train_data, train_label = d_raw
+        img_rows, img_cols = train_data.shape[1], train_data.shape[2]
+
+        model = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
+                          conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
+                          output_depth=2, last_activation=last_activation)
+
+        model_name = 'unet_{0}-{1}_{2}_{3}'.format(num_layers, filter_size, loss_abbrev, descriptive_name)
+
+        epoch, train_loss, val_loss = train(model_name, model, train_data,
+            train_label, epochs, model_metadata=values, batch_size=batch_size)
+
+        return model_name, epoch, train_loss, val_loss
 
 def l1_loss(y_true, y_pred):
     return K.sum(K.abs(y_pred - y_true), axis=-1)
 
 def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epochs = 10,
-               loss = 'mean_squared_error', records = -1, batch_size = 32):
+               loss='mse', records = -1, batch_size = 32):
 
         # Load data
         train_data, train_label_r, train_label_i = DataLoader.load_training(records=records)
@@ -206,14 +240,14 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
 
 
 # train a single unet on a small dataset
-#train_unet(6, 3, learn_rate=1e-4, epochs=2, records=64)
+#train_unet('small-dataset-test', 6, 3, learn_rate=1e-4, epochs=2, records=64)
 
 # train a single unet with DSSIM loss
-# train_unet(num_layers=6, filter_size=3, learn_rate=1e-4,
+# train_unet('dssim_test', num_layers=6, filter_size=3, learn_rate=1e-4,
 #           epochs=2, loss=DSSIMObjective(), records=64)
 
 # train a toy unet for the image evolution plot test
-#train_unet(num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
+#train_unet('evplot', num_layers=3, filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=2, records=64)
 
 # train a toy UNET + DCGAN
 #train_dcgan(num_layers=3, filter_size=3, conv_depth=2, learn_rate=1e-3, epochs=2,
@@ -223,5 +257,6 @@ def train_dcgan(num_layers=5, filter_size=3, conv_depth=32, learn_rate=1e-3, epo
 # train_dcgan(num_layers=7, filter_size=3, conv_depth=32, learn_rate=1e-3, epochs=15,
 #                   loss='mean_squared_error', records=-1, batch_size=32)
 
-
-# train_unet(num_layers=6, filter_size=3, learn_rate=1e-4, conv_depth=32, epochs=18, records=-1)
+train_unet('dual-test', num_layers=6, filter_size=3,
+           learn_rate=1e-4, conv_depth=32, epochs=18,
+           records=-1, separate=False, batch_size=16)

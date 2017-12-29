@@ -11,7 +11,8 @@ K.set_image_data_format('channels_last')
 
 
 def get_unet(img_rows, img_cols, num_layers = 4, filter_size=3, conv_depth=32,
-             optimizer=Adam(lr=1e-4), loss='mean_squared_error', metrics=None):
+             optimizer=Adam(lr=1e-4), loss='mean_squared_error', metrics=None,
+             output_depth=1, last_activation='relu'):
     inputs = Input((img_rows, img_cols, 1))
     last_in= inputs
     conv_dict = {}
@@ -34,7 +35,8 @@ def get_unet(img_rows, img_cols, num_layers = 4, filter_size=3, conv_depth=32,
         last_in = Conv2D(conv_depth*2**i, (filter_size, filter_size),
                          activation='relu', padding='same')(conv)
 
-    conv_last = Conv2D(1, (1, 1), activation='relu', padding='same')(last_in)
+    conv_last = Conv2D(output_depth, (1, 1), activation=last_activation,
+                       padding='same')(last_in)
     model = Model(inputs=[inputs], outputs=[conv_last])
 
     if metrics is None:
