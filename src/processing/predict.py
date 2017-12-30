@@ -63,10 +63,10 @@ def prediction(model_name, data, labels, weights_file='weights.h5'):
 
                 # todo: check for min > 0 (don't need to add)
                 # todo: check for max <= 0?
-                dmin = np.abs(min(np.min(predictions[i, ..., j]),
+                dmin = np.abs(min(0, np.min(predictions[i, ..., j]),
                                        np.min(labels[i, ..., j])))
-                dmax = np.abs(max(np.max(predictions[i, ..., j]),
-                                       np.max(labels[i, ..., j])))
+                dmax = max(np.max(predictions[i, ..., j]),
+                        np.max(labels[i, ..., j]))
 
                 format_and_save(predictions[i, ..., j],
                     file_prefix + 'pred-{0}.png'.format(name), dmin, dmax)
@@ -108,7 +108,10 @@ def prediction(model_name, data, labels, weights_file='weights.h5'):
 #print(np.mean(ssim_r))
 #ssim_r=prediction('unet_5_layers_0.0001_lr_4px_filter_32_convd_loss_msq_r', data, label_r)
 
-data, label = DataLoader.load_testing(records=64, separate=False)
-ssim = prediction('unet_6-3_mse_prelu-dual-test', data, label)
+# data, label = DataLoader.load_testing(records=64, separate=False)
+# ssim = prediction('unet_6-3_mse_prelu-dual-test', data, label)
+
+data, label_r, label_i = DataLoader.load_testing(records=64)
+ssim = prediction('unet_6-3_mse_prelu-test_real', data, label_r)
 
 

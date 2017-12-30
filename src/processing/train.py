@@ -77,7 +77,8 @@ def train_unet(descriptive_name, dataset='ds-lymphome',
                num_layers=6, filter_size=3, conv_depth=32,
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
                separate=True,  batch_size=32, activation: object='relu',
-               last_activation: object='relu', advanced_activations=False):
+               last_activation: object='relu', advanced_activations=False,
+               a_only=False, b_only=False):
     """ Train a unet model and save relevant data """
 
     loss_abbrev = loss
@@ -92,46 +93,44 @@ def train_unet(descriptive_name, dataset='ds-lymphome',
     d_raw = DataLoader.load_training(dataset=dataset, records=records, separate=separate)
 
     # Step 2: Configure architecture
+    # Step 3: Configure Training Parameters and Train
+
     if separate:
         suffix_a, suffix_b = 'real', 'imag'
         if 'magphase' in dataset:
             suffix_a, suffix_b = 'magnitude', 'phase'
 
-        train_data, train_label_r, train_label_i = d_raw
+        train_data, train_label_a, train_label_b = d_raw
         img_rows, img_cols = train_data.shape[1], train_data.shape[2]
 
-        modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
-                          conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
-                          last_activation=last_activation, activation=activation,
-                          advanced_activations=advanced_activations, output_depth=1)
-        modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
-                           conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
-                          last_activation=last_activation, activation=activation,
-                          advanced_activations=advanced_activations, output_depth=1)
+        model_name_a = model_name_b = ''
+        epoch_a = epoch_b = 0
+        train_loss_a = val_loss_a, = train_loss_b = val_loss_b = 0.0
 
-        # Step 3: Configure Training Parameters and Train
-        # model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_r'.format(
-        #     num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
+        if not b_only:
+            modela = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
+                              conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
+                              last_activation=last_activation, activation=activation,
+                              advanced_activations=advanced_activations, output_depth=1)
+            model_name_a = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
+                loss_abbrev, descriptive_name, suffix_a)
+            epoch_a, train_loss_a, val_loss_a = train(model_name_a, modela,
+                train_data, train_label_a, epochs, model_metadata=values,
+                batch_size=batch_size)
 
-        model_name_r = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
-            loss_abbrev, descriptive_name, suffix_a)
+        if not a_only:
+            model_name_b = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
+                loss_abbrev, descriptive_name, suffix_b)
+            modelb = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
+                               conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
+                              last_activation=last_activation, activation=activation,
+                              advanced_activations=advanced_activations, output_depth=1)
+            epoch_b, train_loss_b, val_loss_b = train(model_name_b, modelb,
+                train_data, train_label_b, epochs, model_metadata=values,
+                batch_size=batch_size)
 
-        epoch_r, train_loss_r, val_loss_r = train(model_name_r, modelr,
-            train_data, train_label_r, epochs, model_metadata=values,
-            batch_size=batch_size)
-        #
-        # model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
-        #     num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
-
-        model_name_i = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
-            loss_abbrev, descriptive_name, suffix_b)
-
-        epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli,
-            train_data, train_label_i, epochs, model_metadata=values,
-            batch_size=batch_size)
-
-        return model_name_r, epoch_r, train_loss_r, val_loss_r, \
-             model_name_i, epoch_i, train_loss_i, val_loss_i
+        return model_name_a, epoch_a, train_loss_a, val_loss_a, \
+             model_name_b, epoch_b, train_loss_b, val_loss_b
     else:
         train_data, train_label = d_raw
         img_rows, img_cols = train_data.shape[1], train_data.shape[2]
@@ -186,6 +185,12 @@ def train_unet(descriptive_name, dataset='ds-lymphome',
 #            activation=A.PReLU, advanced_activations=True,
 #            last_activation='relu')
 
+
+# train_unet('prelu-test', num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=25,
+#            records=-1, separate=True, batch_size=16,
+#            activation=A.PReLU, advanced_activations=True,
+#            last_activation=A.PReLU, b_only=True)
 
 # train_unet('prelu-test-magphase', dataset='ds-lymphoma-magphase',
 #            num_layers=6, filter_size=3,
