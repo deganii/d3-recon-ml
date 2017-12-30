@@ -6,6 +6,9 @@ import scipy
 from PIL import Image
 from scipy import misc
 
+from src.processing.folders import Folders
+
+
 class LymphomaGenerator(object):
 
     @classmethod
@@ -21,6 +24,22 @@ class LymphomaGenerator(object):
         training_labels, test_labels = all_labels[training_idx, :, :], all_labels[test_idx, :, :]
         np.savez(os.path.join(data_folder, set_name + '-training.npz'), data=training_data, labels=training_labels)
         np.savez(os.path.join(data_folder, set_name + '-test.npz'), data=test_data, labels=test_labels)
+
+    @classmethod
+    def generateMegPhaseDataset(cls, set_name='ds-lymphoma',  suffix = '-n64'):
+        data_folder = Folders.data_folder()
+        for partition in ['training', 'test']:
+            npz = np.load(data_folder + set_name + '-{0}{1}.npz'.format(partition, suffix))
+            # create data and labels with the same shape
+            labels = npz['labels']
+            ri = labels[:,0,...] + 1j * labels[:,1,...]
+            mag, phase = np.abs(ri), np.angle(ri)
+            mag_phase_labels = np.stack((mag, phase), 1)
+            # save down
+            np.savez(data_folder + set_name + '-{0}-{1}{2}.npz'.
+                     format( 'magphase', partition, suffix),
+                     data=npz['data'], labels=mag_phase_labels)
+
 
     @classmethod
     def generateImages(cls, set_name, stride=100, tile=(192,192),
@@ -76,7 +95,7 @@ class LymphomaGenerator(object):
             last_N = int(N - (N % stride))
 
             M_count = int(np.floor(M/stride))
-            N_count = int(np.floor(N/stride))
+               N_count = int(np.floor(N/stride))
 
             if data is None:
                 data = np.zeros((num_input_files * 4 * M_count * N_count, tile[0] , tile[1]))
@@ -133,3 +152,6 @@ class LymphomaGenerator(object):
 
 #LymphomaGenerator.generateImages('ds-lymphoma')
 #LymphomaGenerator.partitionTrainingAndTestSet('ds-lymphoma')
+#LymphomaGenerator.generateMegPhaseDataset(suffix='')
+
+
