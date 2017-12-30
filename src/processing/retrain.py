@@ -14,7 +14,7 @@ def l2_loss(y_true, y_pred):
     return K.sum(K.square(y_pred - y_true), axis=-1)
 
 def retrain(model_name, new_model_name, data, labels, learn_rate=1e-4,
-            epochs=10, loss='mean_squared_error'):
+            epochs=10, loss='mean_squared_error', recompile=False):
     # Step 1: Load the model
     model = keras.models.load_model(Folders.models_folder() + model_name + '/weights.h5')
 
@@ -26,8 +26,9 @@ def retrain(model_name, new_model_name, data, labels, learn_rate=1e-4,
     #     model.compile(optimizer=Adam(lr=learn_rate), loss=loss,
     #                   metrics=[keras.metrics.mean_absolute_error])
     # else:
-    model.compile(optimizer=Adam(lr=learn_rate), loss=loss,
-                  metrics=[keras.metrics.mean_squared_error])
+    if recompile:
+        model.compile(optimizer=Adam(lr=learn_rate), loss=loss,
+                      metrics=[keras.metrics.mean_squared_error])
 
     # Step 3: Configure Training Parameters and Train
     epoch, train_loss, val_loss = train(new_model_name, model, data, labels, epochs)

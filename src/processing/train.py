@@ -1,7 +1,10 @@
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+
 import numpy as np
 from keras_contrib.losses import DSSIMObjective
-
+from keras.layers import Activation
 from src.data.loader import DataLoader
 from keras.optimizers import Adam
 from src.archs.unet import get_unet
@@ -14,7 +17,7 @@ from keras.utils import generic_utils
 import pandas as pd
 import inspect
 import csv
-
+import keras.layers.advanced_activations as A
 
 def get_callbacks(model_name, batch_size = 32, save_best_only = True):
     models_folder = Folders.models_folder()
@@ -40,7 +43,7 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
 
     if save_summary:
         def summary_saver(s):
-            with open(models_folder + model_name + '/summary.txt', 'w') as f:
+            with open(models_folder + model_name + '/summary.txt', 'a+') as f:
                 print(s, file=f)
         model.summary(print_fn=summary_saver)
 
@@ -72,7 +75,8 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
 
 def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
-               separate=True, last_activation='relu', batch_size=32):
+               separate=True,  batch_size=32, activation: object='relu',
+               last_activation: object='relu', advanced_activations=False):
     """ Train a unet model and save relevant data """
 
     loss_abbrev = loss
@@ -93,20 +97,29 @@ def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
 
         modelr = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                           conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
-                          last_activation=last_activation, output_depth=1)
+                          last_activation=last_activation, activation=activation,
+                          advanced_activations=advanced_activations, output_depth=1)
         modeli = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                            conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
-                          last_activation=last_activation, output_depth=1)
+                          last_activation=last_activation, activation=activation,
+                          advanced_activations=advanced_activations, output_depth=1)
 
         # Step 3: Configure Training Parameters and Train
-        model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_r'.format(
-            num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
+        # model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_r'.format(
+        #     num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
+
+        model_name_r = 'unet_{0}-{1}_{2}_{3}_real'.format(num_layers, filter_size,
+            loss_abbrev, descriptive_name)
+
         epoch_r, train_loss_r, val_loss_r = train(model_name_r, modelr,
             train_data, train_label_r, epochs, model_metadata=values,
             batch_size=batch_size)
+        #
+        # model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
+        #     num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
 
-        model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
-            num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
+        model_name_i = 'unet_{0}-{1}_{2}_{3}_imag'.format(num_layers, filter_size,
+            loss_abbrev, descriptive_name)
         epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli,
             train_data, train_label_r, epochs, model_metadata=values,
             batch_size=batch_size)
@@ -118,8 +131,9 @@ def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
         img_rows, img_cols = train_data.shape[1], train_data.shape[2]
 
         model = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
-                          conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
-                          output_depth=2, last_activation=last_activation)
+                         conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
+                         output_depth=2, activation=activation, advanced_activations=advanced_activations,
+                         last_activation=last_activation)
 
         model_name = 'unet_{0}-{1}_{2}_{3}'.format(num_layers, filter_size, loss_abbrev, descriptive_name)
 
@@ -146,7 +160,22 @@ def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
 # train_dcgan(num_layers=7, filter_size=3, conv_depth=32, learn_rate=1e-3, epochs=15,
 #                   loss='mean_squared_error', records=-1, batch_size=32)
 
-train_unet('dual-test', num_layers=6, filter_size=3,
-           learn_rate=1e-4, conv_depth=32, epochs=18,
-           records=-1, separate=False, batch_size=16,
-           last_activation='relu')
+
+
+# train_unet('dual-test', num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=18,
+#            records=-1, separate=False, batch_size=16,
+#            activation='relu', last_activation='relu')
+#
+
+# train_unet('prelu-test', num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=25,
+#            records=-1, separate=True, batch_size=16,
+#            activation=A.PReLU, advanced_activations=True,
+#            last_activation=A.PReLU)
+
+# train_unet('prelu-dual-test', num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=18,
+#            records=-1, separate=False, batch_size=16,
+#            activation=A.PReLU, advanced_activations=True,
+#            last_activation='relu')

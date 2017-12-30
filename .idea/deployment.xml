@@ -1,11 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" serverName="6.872-GPU">
+  <component name="PublishConfigData" serverName="AWS-GPU">
     <serverData>
       <paths name="6.872-GPU">
         <serverdata>
           <mappings>
             <mapping deploy="/" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/data" />
+            <excludedPath local="true" path="$PROJECT_DIR$/models" />
+            <excludedPath local="true" path="$PROJECT_DIR$/figures" />
+            <excludedPath local="true" path="$PROJECT_DIR$/predictions" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="AWS-GPU">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/d3" local="$PROJECT_DIR$" web="/" />
           </mappings>
           <excludedPaths>
             <excludedPath local="true" path="$PROJECT_DIR$/data" />
