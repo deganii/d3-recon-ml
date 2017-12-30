@@ -6,6 +6,9 @@ import scipy
 from PIL import Image
 from scipy import misc
 
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+
 from src.processing.folders import Folders
 
 
@@ -95,7 +98,7 @@ class LymphomaGenerator(object):
             last_N = int(N - (N % stride))
 
             M_count = int(np.floor(M/stride))
-               N_count = int(np.floor(N/stride))
+            N_count = int(np.floor(N/stride))
 
             if data is None:
                 data = np.zeros((num_input_files * 4 * M_count * N_count, tile[0] , tile[1]))
@@ -153,5 +156,3 @@ class LymphomaGenerator(object):
 #LymphomaGenerator.generateImages('ds-lymphoma')
 #LymphomaGenerator.partitionTrainingAndTestSet('ds-lymphoma')
 #LymphomaGenerator.generateMegPhaseDataset(suffix='')
-
-
