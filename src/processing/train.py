@@ -73,7 +73,8 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
     # (TODO) Step 3: Save other visuals
 
 
-def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
+def train_unet(descriptive_name, dataset='ds-lymphome',
+               num_layers=6, filter_size=3, conv_depth=32,
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
                separate=True,  batch_size=32, activation: object='relu',
                last_activation: object='relu', advanced_activations=False):
@@ -88,10 +89,14 @@ def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
     _, _, _, values = inspect.getargvalues(frame)
 
     # Step 1: load data
-    d_raw = DataLoader.load_training(records=records, separate=separate)
+    d_raw = DataLoader.load_training(dataset=dataset, records=records, separate=separate)
 
     # Step 2: Configure architecture
     if separate:
+        suffix_a, suffix_b = 'real', 'imag'
+        if 'magphase' in dataset:
+            suffix_a, suffix_b = 'magnitude', 'phase'
+
         train_data, train_label_r, train_label_i = d_raw
         img_rows, img_cols = train_data.shape[1], train_data.shape[2]
 
@@ -108,8 +113,8 @@ def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
         # model_name_r = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_r'.format(
         #     num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
 
-        model_name_r = 'unet_{0}-{1}_{2}_{3}_real'.format(num_layers, filter_size,
-            loss_abbrev, descriptive_name)
+        model_name_r = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
+            loss_abbrev, descriptive_name, suffix_a)
 
         epoch_r, train_loss_r, val_loss_r = train(model_name_r, modelr,
             train_data, train_label_r, epochs, model_metadata=values,
@@ -118,10 +123,11 @@ def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
         # model_name_i = 'unet_{0}_layers_{1}_lr_{2}px_filter_{3}_convd_loss_{4}_i'.format(
         #     num_layers, learn_rate, filter_size, conv_depth, loss_abbrev)
 
-        model_name_i = 'unet_{0}-{1}_{2}_{3}_imag'.format(num_layers, filter_size,
-            loss_abbrev, descriptive_name)
+        model_name_i = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
+            loss_abbrev, descriptive_name, suffix_b)
+
         epoch_i, train_loss_i, val_loss_i = train(model_name_i, modeli,
-            train_data, train_label_r, epochs, model_metadata=values,
+            train_data, train_label_i, epochs, model_metadata=values,
             batch_size=batch_size)
 
         return model_name_r, epoch_r, train_loss_r, val_loss_r, \
@@ -179,3 +185,11 @@ def train_unet(descriptive_name, num_layers=6, filter_size=3, conv_depth=32,
 #            records=-1, separate=False, batch_size=16,
 #            activation=A.PReLU, advanced_activations=True,
 #            last_activation='relu')
+
+
+# train_unet('prelu-test-magphase', dataset='ds-lymphoma-magphase',
+#            num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=25,
+#            records=-1, separate=True, batch_size=16,
+#            activation=A.PReLU, advanced_activations=True,
+#            last_activation=A.PReLU)

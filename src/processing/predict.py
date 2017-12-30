@@ -61,6 +61,8 @@ def prediction(model_name, data, labels, weights_file='weights.h5'):
                 ssim[i, j] = skimage.measure.compare_ssim(
                     predictions[i, ..., j], labels[i, ..., j])
 
+                # todo: check for min > 0 (don't need to add)
+                # todo: check for max <= 0?
                 dmin = np.abs(min(np.min(predictions[i, ..., j]),
                                        np.min(labels[i, ..., j])))
                 dmax = np.abs(max(np.max(predictions[i, ..., j]),
