@@ -1,7 +1,11 @@
-HOME = /home/ubuntu/d3
+#!/bin/sh
 
-mkdir %HOME%/logs
-mkdir %HOME%/logs/%MODEL_NAME%
+HOME=/home/ubuntu/d3
+MODEL_NAME=$1
+PROC_DIR=$HOME/src/processing
+LOG_DIR=$HOME/logs/$MODEL_NAME
 
-LOG_DIR = %HOME%/logs/%MODEL_NAME%
-nohup python %HOME%/src/processing/train.py > %LOG_DIR%/%MODEL_NAME%.out 2> %LOG_DIR%/%MODEL_NAME%.err < /dev/null &
+mkdir $HOME/logs
+mkdir $HOME/logs/$MODEL_NAME
+
+cd $PROC_DIR && nohup python train.py > $LOG_DIR/$MODEL_NAME.out 2> $LOG_DIR/$MODEL_NAME.err < /dev/null &

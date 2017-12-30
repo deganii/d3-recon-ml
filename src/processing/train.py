@@ -73,7 +73,7 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
     # (TODO) Step 3: Save other visuals
 
 
-def train_unet(descriptive_name, dataset='ds-lymphome',
+def train_unet(descriptive_name, dataset='ds-lymphoma',
                num_layers=6, filter_size=3, conv_depth=32,
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
                separate=True,  batch_size=32, activation: object='relu',
@@ -105,7 +105,7 @@ def train_unet(descriptive_name, dataset='ds-lymphome',
 
         model_name_a = model_name_b = ''
         epoch_a = epoch_b = 0
-        train_loss_a = val_loss_a, = train_loss_b = val_loss_b = 0.0
+        train_loss_a = val_loss_a = train_loss_b = val_loss_b = 0.0
 
         if not b_only:
             modela = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
@@ -186,11 +186,11 @@ def train_unet(descriptive_name, dataset='ds-lymphome',
 #            last_activation='relu')
 
 
-# train_unet('prelu-test', num_layers=6, filter_size=3,
-#            learn_rate=1e-4, conv_depth=32, epochs=25,
-#            records=-1, separate=True, batch_size=16,
-#            activation=A.PReLU, advanced_activations=True,
-#            last_activation=A.PReLU, b_only=True)
+train_unet('prelu-test', num_layers=6, filter_size=3,
+           learn_rate=1e-4, conv_depth=32, epochs=25,
+           records=-1, separate=True, batch_size=16,
+           activation=A.PReLU, advanced_activations=True,
+           last_activation=A.PReLU, b_only=True)
 
 # train_unet('prelu-test-magphase', dataset='ds-lymphoma-magphase',
 #            num_layers=6, filter_size=3,
