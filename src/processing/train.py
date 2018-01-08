@@ -186,11 +186,11 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
 #            last_activation='relu')
 
 
-train_unet('prelu-test', num_layers=6, filter_size=3,
-           learn_rate=1e-4, conv_depth=32, epochs=25,
-           records=-1, separate=True, batch_size=16,
-           activation=A.PReLU, advanced_activations=True,
-           last_activation=A.PReLU, b_only=True)
+# train_unet('prelu-test', num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=25,
+#            records=-1, separate=True, batch_size=16,
+#            activation=A.PReLU, advanced_activations=True,
+#            last_activation=A.PReLU, b_only=True)
 
 # train_unet('prelu-test-magphase', dataset='ds-lymphoma-magphase',
 #            num_layers=6, filter_size=3,

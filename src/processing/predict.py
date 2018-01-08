@@ -111,7 +111,14 @@ def prediction(model_name, data, labels, weights_file='weights.h5'):
 # data, label = DataLoader.load_testing(records=64, separate=False)
 # ssim = prediction('unet_6-3_mse_prelu-dual-test', data, label)
 
-data, label_r, label_i = DataLoader.load_testing(records=64)
-ssim = prediction('unet_6-3_mse_prelu-test_real', data, label_r)
+# data, label_r, label_i = DataLoader.load_testing(records=64)
+# ssim = prediction('unet_6-3_mse_prelu-test_real', data, label_r)
+# ssim = prediction('unet_6-3_mse_prelu-test_imag', data, label_i)
+
+
+# data, label_mag, label_ph = DataLoader.load_testing(records=64, dataset='ds-lymphoma-magphase')
+# ssim = prediction('unet_6-3_mse_prelu-test-magphase_magnitude', data, label_mag)
+# ssim = prediction('unet_6-3_mse_prelu-test-magphase_phase', data, label_ph)
+
 
 
