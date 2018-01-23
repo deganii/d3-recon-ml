@@ -7,6 +7,14 @@ import os
 from keras_contrib.losses import DSSIMObjective
 keras.losses.dssim = DSSIMObjective()
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import cmocean
+import cmocean.cm
+
+
 # from keras.utils.generic_utils import get_custom_objects
 #
 # loss = DSSIMObjective()
@@ -25,10 +33,14 @@ def format_and_save(img_array, output_file, dmin=None, dmax=None):
     else:
         img_array = img_array / np.max(img_array)
     img = Image.fromarray(np.transpose(np.uint8(255.0 * img_array)))
-    print('Norm: {0}, Max: {1}\n'.format(dmin, dmax))
+    #print('Norm: {0}, Max: {1}\n'.format(dmin, dmax))
     scipy.misc.imsave(output_file, img)
 
-def prediction(model_name, data, labels, weights_file='weights.h5'):
+def format_and_save_phase(img_array, output_file):
+    plt.imsave(output_file, img_array, cmap=cmocean.cm.phase,  vmin=-np.pi, vmax=np.pi)
+
+def prediction(model_name, data, labels, save_err_img = False,
+               phase_mapping= False, weights_file='weights.h5'):
     from src.processing.train import get_unet
     from keras.optimizers import Adam
     #model = get_unet(192, 192, num_layers=6, filter_size=3,
@@ -40,16 +52,27 @@ def prediction(model_name, data, labels, weights_file='weights.h5'):
     predictions = model.predict(data, batch_size=32, verbose=0)
 
     predictions = predictions.astype(np.float64)
-
     # check if the network predicts the complex valued image or just one component
+    complex_valued = predictions.shape[-1] == 2
+
+
+    # we are color-mapping a phase pre
+    if phase_mapping and complex_valued:
+        predictions_complex = predictions[..., 0]  + 1j * predictions[..., 1]
+        predictions = np.angle(predictions_complex)
+
+
+    # update for phase flattening
     complex_valued = predictions.shape[-1] == 2
 
     if complex_valued:
         ssim = np.empty([predictions.shape[0], predictions.shape[-1]])
+        ms_err = np.empty([predictions.shape[0], predictions.shape[-1]])
     else:
         predictions=predictions.reshape([data.shape[0],data.shape[1], data.shape[2]])
         labels=labels.reshape([labels.shape[0],labels.shape[1],labels.shape[2]])
         ssim = np.empty([predictions.shape[0]])
+        ms_err = np.empty([predictions.shape[0]])
 
     for i in range(predictions.shape[0]):
         file_prefix = mp_folder + '{0:05}-'.format(i)
@@ -74,13 +97,30 @@ def prediction(model_name, data, labels, weights_file='weights.h5'):
                     file_prefix + 'label-{0}.png'.format(name), dmin, dmax)
         else:
             ssim[i] = skimage.measure.compare_ssim(predictions[i], labels[i])
+
+            sq_err = np.square(predictions[i] - labels[i])
+
             dmin = np.abs(min(np.min(predictions[i]), np.min(labels[i])))
             dmax = np.abs(max(np.max(predictions[i]), np.max(labels[i])))
             format_and_save(predictions[i], file_prefix + 'pred.png', dmin, dmax)
             format_and_save(labels[i], file_prefix + 'label.png', dmin, dmax)
+            if phase_mapping:
+                # mean phase error accounting for loop-over
+                ms_err[i] = np.mean(np.abs(np.exp(1j * predictions[i]) -  np.exp(1j * labels[i])))
+                format_and_save_phase(predictions[i], file_prefix + 'pred.png')
+                format_and_save_phase(labels[i], file_prefix + 'label.png')
+            else:
+                ms_err[i] = np.mean(sq_err)
+                format_and_save(predictions[i], file_prefix + 'pred.png', dmin, dmax)
+                format_and_save(labels[i], file_prefix + 'label.png', dmin, dmax)
+
+            if save_err_img:
+                smin, smax = np.min(sq_err), np.max(sq_err)
+                format_and_save(sq_err, file_prefix + 'err.png', smin, smax)
 
     # calculate and save statistics over SSIM
     header = 'Structural Similarity Indices for {0}\n'.format(model_name)
+    header = 'Phase Mapping: {0}\n'.format(phase_mapping)
     header += 'N:     {0}\n'.format(ssim.shape[0])
 
     if complex_valued:
@@ -98,7 +138,9 @@ def prediction(model_name, data, labels, weights_file='weights.h5'):
         header += 'MIN:   {0}, Record ({1}\n'.format(np.min(ssim), np.argmin(ssim))
         header += 'MAX:   {0}, Record ({1}\n\n'.format(np.max(ssim), np.argmax(ssim))
 
-    np.savetxt(mp_folder + 'stats.txt', ssim, header=header)
+    # add index to ssim
+    indexed_ssim = np.transpose(np.vstack((np.arange(ssim.shape[0]), ssim)))
+    np.savetxt(mp_folder + 'stats.txt', indexed_ssim, header=header)
     SSIMPlotter.save_plot(model_name, ssim)
     return ssim
 
@@ -114,11 +156,12 @@ def prediction(model_name, data, labels, weights_file='weights.h5'):
 # data, label_r, label_i = DataLoader.load_testing(records=64)
 # ssim = prediction('unet_6-3_mse_prelu-test_real', data, label_r)
 # ssim = prediction('unet_6-3_mse_prelu-test_imag', data, label_i)
-
-
+#
 # data, label_mag, label_ph = DataLoader.load_testing(records=64, dataset='ds-lymphoma-magphase')
+# for i in range(label_ph.shape[0]):
+#     print("{2} Max: {0}, Min: {1}, Err:[3}".format(
+#         np.max(label_ph[i]), np.min(label_ph[i]), i))
+
 # ssim = prediction('unet_6-3_mse_prelu-test-magphase_magnitude', data, label_mag)
-# ssim = prediction('unet_6-3_mse_prelu-test-magphase_phase', data, label_ph)
-
-
+# ssim = prediction('unet_6-3_mse_prelu-test-magphase_phase', data, label_ph, save_err_img=True)
 

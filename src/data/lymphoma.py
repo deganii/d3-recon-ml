@@ -8,12 +8,9 @@ from scipy import misc
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-
 from src.processing.folders import Folders
 
-
 class LymphomaGenerator(object):
-
     @classmethod
     def partitionTrainingAndTestSet(cls, set_name='ds-lymphoma'):
         data_folder = '../../data/'
@@ -29,19 +26,33 @@ class LymphomaGenerator(object):
         np.savez(os.path.join(data_folder, set_name + '-test.npz'), data=test_data, labels=test_labels)
 
     @classmethod
-    def generateMegPhaseDataset(cls, set_name='ds-lymphoma',  suffix = '-n64'):
+    def generateMagPhaseDataset(cls, set_name='ds-lymphoma',  suffix = '-n64'):
         data_folder = Folders.data_folder()
         for partition in ['training', 'test']:
             npz = np.load(data_folder + set_name + '-{0}{1}.npz'.format(partition, suffix))
             # create data and labels with the same shape
             labels = npz['labels']
-            ri = labels[:,0,...] + 1j * labels[:,1,...]
+            ri = labels[:   ,0,...] + 1j * labels[:,1,...]
             mag, phase = np.abs(ri), np.angle(ri)
             mag_phase_labels = np.stack((mag, phase), 1)
             # save down
             np.savez(data_folder + set_name + '-{0}-{1}{2}.npz'.
                      format( 'magphase', partition, suffix),
                      data=npz['data'], labels=mag_phase_labels)
+
+    @classmethod
+    def generateSplitPhaseDataset(cls, set_name='ds-lymphoma-magphase',  suffix = '-n64'):
+        data_folder = Folders.data_folder()
+        for partition in ['training', 'test']:
+            npz = np.load(data_folder + set_name + '-{0}{1}.npz'.format(partition, suffix))
+            # create data and labels with the same shape
+            phase = npz['labels'][:,1,...]
+            phase_x, phase_y = np.cos(phase), np.sin(phase)
+            phase_labels = np.stack((phase_x, phase_y), 1)
+            # save down
+            np.savez(data_folder + set_name + '-{0}-{1}{2}.npz'.
+                     format( 'splitphase', partition, suffix),
+                     data=npz['data'], labels=phase_labels)
 
 
     @classmethod
@@ -155,4 +166,5 @@ class LymphomaGenerator(object):
 
 #LymphomaGenerator.generateImages('ds-lymphoma')
 #LymphomaGenerator.partitionTrainingAndTestSet('ds-lymphoma')
-#LymphomaGenerator.generateMegPhaseDataset(suffix='')
+# LymphomaGenerator.generateMegPhaseDataset(suffix='')
+LymphomaGenerator.generateSplitPhaseDataset()

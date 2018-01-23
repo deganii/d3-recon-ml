@@ -78,7 +78,7 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
                separate=True,  batch_size=32, activation: object='relu',
                last_activation: object='relu', advanced_activations=False,
-               a_only=False, b_only=False):
+               a_only=False, b_only=False, split_b = False):
     """ Train a unet model and save relevant data """
 
     loss_abbrev = loss
@@ -121,10 +121,11 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
         if not a_only:
             model_name_b = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
                 loss_abbrev, descriptive_name, suffix_b)
+            output_depth = 2 if split_b else 1
             modelb = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                                conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
                               last_activation=last_activation, activation=activation,
-                              advanced_activations=advanced_activations, output_depth=1)
+                              advanced_activations=advanced_activations, output_depth=output_depth)
             epoch_b, train_loss_b, val_loss_b = train(model_name_b, modelb,
                 train_data, train_label_b, epochs, model_metadata=values,
                 batch_size=batch_size)
@@ -198,3 +199,13 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
 #            records=-1, separate=True, batch_size=16,
 #            activation=A.PReLU, advanced_activations=True,
 #            last_activation=A.PReLU)
+
+
+# train_unet('prelu-split-phase-only', dataset='ds-lymphoma-splitphase',
+#            num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=25,
+#            records=-1, separate=True, b_only=True, split_b = True,
+#            batch_size=16, activation=A.PReLU, advanced_activations=True,
+#            last_activation=A.PReLU)
+#
+#

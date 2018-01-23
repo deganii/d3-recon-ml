@@ -1,14 +1,19 @@
 
 from __future__ import print_function
 import PIL.ImageOps
-import scipy
-from PIL import Image, ImageDraw
+import keras
+import scipy, scipy.ndimage
+from PIL import Image, ImageDraw, ImageFont
 import random
+import string
 import numpy as np
 import os
 import ntpath
 from scipy import misc
 import glob
+
+from src.processing.folders import Folders
+
 
 class DiffractionGenerator(object):
 
@@ -22,17 +27,18 @@ class DiffractionGenerator(object):
         return np.fft.ifftshift(np.fft.ifft2(np.fft.ifftshift(G))) * Nx * Ny * dfx * dfy
 
     @classmethod
-    def upsampling(cls, data, dx1):
-        dx2 = dx1 / (2 ** self.UpsampleFactor)
-        x_size = ((2 ** self.UpsampleFactor) * data.shape[0]) - (2 ** (self.UpsampleFactor) - 1)
-        y_size = ((2 ** self.UpsampleFactor) * data.shape[1]) - (2 ** (self.UpsampleFactor) - 1)
+    def upsampling(cls, data, dx1, upsample=2):
+        dx2 = dx1 / (2 ** upsample)
+        x_size = ((2 ** upsample) * data.shape[0]) - (2 ** (upsample) - 1)
+        y_size = ((2 ** upsample) * data.shape[1]) - (2 ** (upsample) - 1)
         data = data.astype("float32")
         upsampled = scipy.ndimage.zoom(data, [x_size / data.shape[0], y_size / data.shape[1]], order=3)
-        self.debug_save_mat(upsampled, 'upsampledPy')
+        # self .debug_save_mat(upsampled, 'upsampledPy')
         return upsampled, dx2
 
     @classmethod
-    def freeSpacePropagation(cls, bf_image, z = 5e-4, lmbda = 405e-9, delta=2.2e-6):
+    def freeSpacePropagation(cls, bf_image, z = 5e-4, lmbda = 405e-9,
+                             delta=2.2e-6, upsample=2, pad_width=0):
         ft2 = DiffractionGenerator.ft2
         ift2 = DiffractionGenerator.ift2
         if type(bf_image) is not np.ndarray:
@@ -41,10 +47,12 @@ class DiffractionGenerator(object):
         else:
             recon = bf_image
 
-        # if self.UpsampleFactor > 0:
-        #     recon, delta = DiffractionGenerator.upsampling(recon, delta)
+        if upsample > 1:
+            recon, delta = DiffractionGenerator.upsampling(recon, delta, upsample)
+            #scipy.misc.imsave('../../data/ds-simulated/00000-0-US.png', recon)
 
-        #recon = np.pad(recon, pad_width=pad_width, mode='constant', constant_values=255 )
+        recon = np.pad(recon, pad_width=pad_width, mode='edge')
+        #scipy.misc.imsave('../../data/ds-simulated/00000-0-PAD.png', recon)
         k = 2 * np.pi / lmbda
         Nx, Ny = np.shape(recon)
         dfx = 1 / (Nx * delta)
@@ -57,44 +65,82 @@ class DiffractionGenerator(object):
         Output = ift2(np.multiply(R, Gfp), dfx, dfy)
         return Output
 
+    # def generateBeadSample(self):
+
 
     @classmethod
-    def generateImage(cls, destination, seq, bf_image, label, pad_width = 20, save = True, dx = 0.8,  dy = 0.8, z = 0.2, lmbda = 405, destfilename = None):
-        if type(bf_image) is not np.ndarray:
-            U0 = np.array(bf_image)
-        else:
-            U0 = bf_image
+    def generateSample(cls, size=(192,192), z = 7e-4, lmbda = 405e-9,
+                       delta=2.2e-6, upsample=4):
+        w, h = size
+        # super_size = (w * 10, h * 10)
+        # super_image = Image.new('L', super_size, (255))
 
-        U0 = np.pad(U0, pad_width=pad_width, mode='constant', constant_values=255 )
+        image = Image.new('L', size, (255))
+        draw = ImageDraw.Draw(image)
 
-        k = 2 * np.pi / lmbda
-        ny, nx = U0.shape
-        Lx = dx * nx
-        Ly = dy * ny
+        # image = PIL.ImageOps.invert(image)
+        # draw objects on the order of 5-10 microns (about 20-30 pixels
+        objects_bound = []
 
-        dfx = 1. / Lx
-        dfy = 1. / Ly
+        def place(obj_size):
+            obj_w, obj_h = obj_size
+            # try 20 times before giving up
+            for i in range(20):
+                r_x, r_y = (random.randint(0, w - obj_w), random.randint(0, h - obj_h))
+                collision = False
+                for other in objects_bound:
+                    o_x, o_y, o_w, o_h = other
+                    if (o_x < r_x + obj_w and
+                            o_x + o_w > r_x and
+                        o_y < r_y + obj_h and
+                            o_h + o_y > r_y):
+                        collision = True
+                        break
+                if not collision:
+                    objects_bound.append((r_x, r_y, obj_w, obj_h))
+                    return r_x, r_y, obj_w, obj_h
+            return -1, -1, -1, -1
 
-        u = np.outer(np.ones(nx), [nxi - nx / 2 for nxi in range(0, nx)]) * dfx
-        v = np.outer(np.ones(ny), [nyi - ny / 2 for nyi in range(0, ny)]) * dfy
-        v = np.transpose(v)
+        for i in range(20):
+            obj_type = random.randint(0, 4)
+            if obj_type == 0 or obj_type > 2:
+                # random placements of non-overlapping shapes with different refractive indices
+                fnt = ImageFont.truetype('arial.ttf', 20)
+                t_len = random.randint(1,6)
+                rand_text = "".join([random.choice(string.digits + string.ascii_letters)
+                                     for i in range(t_len)])
+                text_size = fnt.getsize(rand_text)
+                t_x, t_y, t_w, t_h = place(text_size)
+                if t_x >= 0:
+                    draw.text((t_x, t_y), rand_text, font=fnt, fill=(0))
+            if obj_type == 1:
+                e_w = random.randint(5,20)
+                e_h = random.randint(5,20)
+                t_x, t_y, t_w, t_h = place((e_w, e_h))
+                if t_x >= 0:
+                    draw.ellipse([(t_x, t_y), (t_x+t_w, t_y+t_h)], fill=(0))
+            if obj_type == 2:
+                t_w = random.randint(5, 20)
+                t_h = random.randint(5, 20)
+                t_x, t_y, t_w, t_h = place((t_w, t_h))
+                if t_x >= 0:
+                    draw.polygon([(t_x, t_y), (t_x + t_w, t_y + random.randint(t_h-5, t_h)),
+                                               (t_x + random.randint(0,10), t_y + t_h)], fill=(0))
 
-        O = np.fft.fftshift(np.fft.fft2(U0))
 
-        H = np.exp(1j * k * z) * np.exp(-1j * np.pi * lmbda * z * (np.square(u) + np.square(v)))
+        # introduce a random magnitude and phase shift
+        recon = np.array(image).astype(np.complex64)
+        mag = random.uniform    (0.0, 1.0)
+        phase = random.uniform(0.0, 2 * np.pi)
+        recon = recon * mag * np.exp(1j * phase)
+        # propagate to a hologram
+        holo = np.abs(DiffractionGenerator.freeSpacePropagation(recon, upsample=1, z=7e-4))
+        # image.save('output.png')
+        scipy.misc.imsave('holo.png', holo)
+        scipy.misc.imsave('label.png', np.abs(recon))
 
-        U = np.fft.ifft2(np.fft.ifftshift(O * H))
-
-        U = np.absolute(U)
-
-        if save:
-            if not os.path.exists(destination):
-                os.makedirs(destination)
-            if destfilename is None:
-                destfilename = 'D{0:05}-{1}.png'.format(seq, label)
-            scipy.misc.imsave(os.path.join(
-                destination, destfilename), U)
-        return U, label
+        return holo, recon
+        # return np.vstack([np.real(recon), np.imag(recon)])
 
     @classmethod
     def generateNewImagePair(cls, destination, seq, save=True, dx=0.8, dy=0.8, z=0.2, lmbda=405):
@@ -142,12 +188,26 @@ class DiffractionGenerator(object):
         DiffractionGenerator.generateDiffractionDataset(test_data, test_labels, test_destination, 'test')
 
 
-input = scipy.misc.imread('../../data/ds-simulated/00000-0.png').astype("float32")
-input = (input / np.max(input))
-output = DiffractionGenerator.freeSpacePropagation(input)
-mag = np.abs(output)
-norm_mag = 255.0 * (mag / np.max(mag))
-scipy.misc.imsave('../../data/ds-simulated/00000-0-prop.png', norm_mag)
+# input = scipy.misc.imread('../../data/ds-simulated/00017-label-sc.png').astype("float32")
+# input = input / np.max(input)
+# output = DiffractionGenerator.freeSpacePropagation(input, upsample=2, pad_width=0, z=5e-4, delta=2.2e-6 )
+# mag = np.abs(output)
+# norm_mag = 255.0 * (mag / np.max(mag))
+# scipy.misc.imsave('../../data/ds-simulated/00017-prop.png', norm_mag)
 
 #DiffractionGenerator.generateNewImagePair(".", 1)
 #DiffractionGenerator.diffractDS1Dataset()
+
+# test a single diffraction simulation
+# holo, recon = DiffractionGenerator.generateSample()
+# holo = np.abs(holo)
+# holo = holo / np.max(holo)
+# holo = np.reshape(holo, [1,192, 192, 1])
+# # holo = np.zeros([1,192,192,1])
+# model = keras.models.load_model(Folders.models_folder() +
+#             'unet_6-3_mse_prelu-test-magphase_magnitude/weights.h5')
+# predictions = model.predict(holo, batch_size=1, verbose=0)
+# predictions = np.reshape(predictions, [192,192])
+# scipy.misc.imsave('pred.png', predictions)
+
+
