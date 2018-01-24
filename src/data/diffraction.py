@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 import PIL.ImageOps
-import keras
+# import keras
 import scipy, scipy.ndimage
 from PIL import Image, ImageDraw, ImageFont
 import random
@@ -65,8 +65,83 @@ class DiffractionGenerator(object):
         Output = ift2(np.multiply(R, Gfp), dfx, dfy)
         return Output
 
-    # def generateBeadSample(self):
+    @classmethod
+    def generateRandomText(cls,  text_len = 3):
+        return "".join([random.choice(string.digits + string.ascii_letters)
+                             for i in range(text_len)])
 
+    @classmethod
+    def generateCenteredTextSample(cls, size=(192,192), z = 1.5e-3, lmbda = 405e-9,
+                       delta=2.2e-6, upsample=1, text=None, text_len = 3, font_size=40,
+                        exclude='CSB'):
+        w, h = size
+        image = Image.new('L', size, (255))
+        draw = ImageDraw.Draw(image)
+
+        # random placements of non-overlapping shapes with different refractive indices
+        fnt = ImageFont.truetype('arial.ttf', font_size)
+        if text is None:
+            rand_text = exclude
+            while rand_text == exclude: # don't include the test sample
+                rand_text = DiffractionGenerator.generateRandomText(text_len)
+            text = rand_text
+        tw, th = fnt.getsize(text)
+        tx, ty = (w - tw)/2, (h - th)/2,
+        draw.text((tx, ty), text, font=fnt, fill=(0))
+         # introduce a random magnitude and phase shift
+        recon = np.array(image) #.astype(np.complex64)
+        # propagate to a hologram
+        holo = np.abs(DiffractionGenerator.freeSpacePropagation(recon,
+                upsample=upsample, z=z, lmbda=lmbda))
+        # cropx, cropy = int(w/upsample), int(h/upsample)
+        # holo = holo[cropx:-cropx, cropy:-cropy]
+        # scipy.misc.imsave('holo.png', holo)
+        # scipy.misc.imsave('label.png', np.abs(recon))
+        return holo, recon
+
+    @classmethod
+    def generateTextDataset(cls, set_name='ds-text', samples=10000,
+            size=(192,192), z = 1.5e-3, lmbda = 405e-9,
+            delta=2.2e-6, upsample=1, text_len = 3, font_size=40):
+
+        size_w,size_h = size
+        data = np.zeros((samples, size_w, size_h))
+        labels = np.zeros((samples, size_w, size_h))
+
+        data_folder = Folders.data_folder()
+        image_folder = data_folder + set_name + '/'
+        if not os.path.exists(image_folder):
+            os.makedirs(image_folder)
+        text = None
+        text_set = {}
+        for i in range(samples):
+            if i % 400 == 0:
+                print("Generating Sample: {0}/{1}".format(i, samples))
+            if i == samples -1:
+                text = 'CSB'
+            else:
+                while text is None or text in text_set:
+                    text = DiffractionGenerator.generateRandomText(text_len)
+            text_set[text] = True
+            holo, recon = DiffractionGenerator.generateCenteredTextSample(size=size,
+                z=z, lmbda=lmbda, delta=delta, upsample=upsample,
+                text_len=text_len, font_size=font_size, text=text)
+            data[i] = holo
+            labels[i] = recon
+
+            holoDestFilename = '{0:05}-H-{1}.png'.format(i,text)
+            magnDestFilename = '{0:05}-M-{1}.png'.format(i,text)
+
+            # save hologram and magnitude
+            scipy.misc.imsave(image_folder +  holoDestFilename, np.squeeze(holo))
+            scipy.misc.imsave(image_folder +  magnDestFilename, np.squeeze(recon))
+
+        # partition and save
+        test_count = int(np.floor(labels.shape[0] * 0.8))
+        training_data, test_data = data[:test_count, ...], data[test_count:, ...]
+        training_labels, test_labels =labels[:test_count, ...], labels[test_count:, ...]
+        np.savez(os.path.join(data_folder, set_name + '-training.npz'), data=training_data, labels=training_labels)
+        np.savez(os.path.join(data_folder, set_name + '-test.npz'), data=test_data, labels=test_labels)
 
     @classmethod
     def generateSample(cls, size=(192,192), z = 7e-4, lmbda = 405e-9,
@@ -211,3 +286,5 @@ class DiffractionGenerator(object):
 # scipy.misc.imsave('pred.png', predictions)
 
 
+# DiffractionGenerator.generateCenteredTextSample()
+# DiffractionGenerator.generateTextDataset()

@@ -78,7 +78,7 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
                separate=True,  batch_size=32, activation: object='relu',
                last_activation: object='relu', advanced_activations=False,
-               a_only=False, b_only=False, split_b = False):
+               a_only=False, b_only=False, output_depth=2):
     """ Train a unet model and save relevant data """
 
     loss_abbrev = loss
@@ -121,7 +121,7 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
         if not a_only:
             model_name_b = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
                 loss_abbrev, descriptive_name, suffix_b)
-            output_depth = 2 if split_b else 1
+            # output_depth = 2 if split_b else 1
             modelb = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                                conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
                               last_activation=last_activation, activation=activation,
@@ -138,7 +138,7 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
 
         model = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                          conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
-                         output_depth=2, activation=activation, advanced_activations=advanced_activations,
+                         output_depth=output_depth, activation=activation, advanced_activations=advanced_activations,
                          last_activation=last_activation)
 
         model_name = 'unet_{0}-{1}_{2}_{3}'.format(num_layers, filter_size, loss_abbrev, descriptive_name)
@@ -201,11 +201,20 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
 #            last_activation=A.PReLU)
 
 
-# train_unet('prelu-split-phase-only', dataset='ds-lymphoma-splitphase',
+# train_unet('prelu-split-phase-only', dataset='ds-lymphoma-magphase-splitphase',
 #            num_layers=6, filter_size=3,
 #            learn_rate=1e-4, conv_depth=32, epochs=25,
-#            records=-1, separate=True, b_only=True, split_b = True,
+#            records=-1, separate=False, b_only=True,
 #            batch_size=16, activation=A.PReLU, advanced_activations=True,
 #            last_activation=A.PReLU)
 #
 #
+
+
+# centered text test
+train_unet('text', num_layers=6, filter_size=3,
+    dataset = 'ds-text',
+    learn_rate=1e-4, conv_depth=32, epochs=25,
+    records=-1, separate=False, batch_size=16,
+    activation=A.PReLU, advanced_activations=True,
+    last_activation='sigmoid', output_depth=1)

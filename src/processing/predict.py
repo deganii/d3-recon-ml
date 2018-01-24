@@ -47,7 +47,7 @@ def prediction(model_name, data, labels, save_err_img = False,
     #                            conv_depth=32, optimizer=Adam(lr=1e-3), loss='mse')
     #model.load_weights(Folders.models_folder() + model_name + '/' + weights_file)
     model = keras.models.load_model(Folders.models_folder() + model_name + '/' + weights_file)
-    mp_folder = Folders.predictions_folder() + model_name + '/'
+    mp_folder = Folders.predictions_folder() + model_name + '-n{0}/'.format(data.shape[0])
     os.makedirs(mp_folder, exist_ok=True)
     predictions = model.predict(data, batch_size=32, verbose=0)
 
@@ -60,7 +60,8 @@ def prediction(model_name, data, labels, save_err_img = False,
     if phase_mapping and complex_valued:
         predictions_complex = predictions[..., 0]  + 1j * predictions[..., 1]
         predictions = np.angle(predictions_complex)
-
+        labels_complex = labels[..., 0] + 1j * labels[..., 1]
+        labels = np.angle(labels_complex)
 
     # update for phase flattening
     complex_valued = predictions.shape[-1] == 2
@@ -133,14 +134,24 @@ def prediction(model_name, data, labels, save_err_img = False,
             np.max(ssim[:, 0]), np.max(ssim[:, 1]),
             np.argmax(ssim[:, 0]), np.argmax(ssim[:, 1]))
     else:
+        header += 'SSIM Statistics :\n --------------\n'
         header += 'Mean:  {0}\n'.format(np.mean(ssim))
         header += 'STDEV: {0}\n'.format(np.std(ssim))
-        header += 'MIN:   {0}, Record ({1}\n'.format(np.min(ssim), np.argmin(ssim))
-        header += 'MAX:   {0}, Record ({1}\n\n'.format(np.max(ssim), np.argmax(ssim))
+        header += 'MIN:   {0}, Record ({1})\n'.format(np.min(ssim), np.argmin(ssim))
+        header += 'MAX:   {0}, Record ({1})\n\n'.format(np.max(ssim), np.argmax(ssim))
+        header += 'MSE Statistics :\n --------------\n'
+        header += 'Mean:  {0}\n'.format(np.mean(ms_err))
+        header += 'STDEV: {0}\n'.format(np.std(ms_err))
+        header += 'MIN:   {0}, Record ({1})\n'.format(np.min(ms_err), np.argmin(ms_err))
+        header += 'MAX:   {0}, Record ({1})\n\n'.format(np.max(ms_err), np.argmax(ms_err))
+
 
     # add index to ssim
-    indexed_ssim = np.transpose(np.vstack((np.arange(ssim.shape[0]), ssim)))
-    np.savetxt(mp_folder + 'stats.txt', indexed_ssim, header=header)
+    indexed_ssim_mse = np.transpose(np.vstack((np.arange(ssim.shape[0]), ssim, ms_err)))
+    # indexed_ssim_mse = np.array(indexed_ssim_mse, dtype=[("idx", int),  ("SSIM", float), ("MSE", float)])
+
+    np.savetxt(mp_folder + 'stats.txt', indexed_ssim_mse, header=header, fmt="%i %10.5f %10.5f")
+    np.savez(mp_folder + 'stats.npz', indexed_ssim_mse)
     SSIMPlotter.save_plot(model_name, ssim)
     return ssim
 
@@ -164,4 +175,12 @@ def prediction(model_name, data, labels, save_err_img = False,
 
 # ssim = prediction('unet_6-3_mse_prelu-test-magphase_magnitude', data, label_mag)
 # ssim = prediction('unet_6-3_mse_prelu-test-magphase_phase', data, label_ph, save_err_img=True)
+
+
+# data, label_mag, label_ph = DataLoader.load_testing(records=-1, dataset='ds-lymphoma-magphase')
+# ssim = prediction('unet_6-3_mse_prelu-test-magphase_magnitude', data, label_mag)
+
+# data, label_splitphase = DataLoader.load_testing(records=-1, separate = False,
+#         dataset='ds-lymphoma-magphase-splitphase')
+# ssim = prediction('unet_6-3_mse_prelu-split-phase-only', data, label_splitphase, phase_mapping=True)
 

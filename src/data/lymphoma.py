@@ -10,6 +10,14 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from src.processing.folders import Folders
 
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import cmocean
+import cmocean.cm
+
 class LymphomaGenerator(object):
     @classmethod
     def partitionTrainingAndTestSet(cls, set_name='ds-lymphoma'):
@@ -46,13 +54,31 @@ class LymphomaGenerator(object):
         for partition in ['training', 'test']:
             npz = np.load(data_folder + set_name + '-{0}{1}.npz'.format(partition, suffix))
             # create data and labels with the same shape
+            holo = npz['data']
+            mag = npz['labels'][:, 0, ...]
             phase = npz['labels'][:,1,...]
             phase_x, phase_y = np.cos(phase), np.sin(phase)
             phase_labels = np.stack((phase_x, phase_y), 1)
-            # save down
-            np.savez(data_folder + set_name + '-{0}-{1}{2}.npz'.
-                     format( 'splitphase', partition, suffix),
-                     data=npz['data'], labels=phase_labels)
+
+            # save down images
+            split_name = data_folder + set_name + '-{0}-{1}{2}'.\
+                format( 'splitphase', partition, suffix)
+            if not os.path.exists(split_name):
+                os.makedirs(split_name)
+            for i in range(phase.shape[0]):
+                holoDestFilename = '{0:05}-H.png'.format(i)
+                magnDestFilename = '{0:05}-M.png'.format(i)
+                phasDestFilename = '{0:05}-P.png'.format(i)
+
+                # save hologram and magnitude
+                scipy.misc.imsave(os.path.join(split_name, holoDestFilename), np.squeeze(holo[i]))
+                scipy.misc.imsave(os.path.join(split_name, magnDestFilename), np.squeeze(mag[i]))
+                # save phase
+                plt.imsave(os.path.join(split_name, phasDestFilename), np.squeeze(phase[i]),
+                           cmap=cmocean.cm.phase, vmin=-np.pi, vmax=np.pi)
+
+            # save down npz
+            np.savez(split_name + '.npz', data=npz['data'], labels=phase_labels)
 
 
     @classmethod
@@ -167,4 +193,5 @@ class LymphomaGenerator(object):
 #LymphomaGenerator.generateImages('ds-lymphoma')
 #LymphomaGenerator.partitionTrainingAndTestSet('ds-lymphoma')
 # LymphomaGenerator.generateMegPhaseDataset(suffix='')
-LymphomaGenerator.generateSplitPhaseDataset()
+# LymphomaGenerator.generateSplitPhaseDataset(suffix='')
+# LymphomaGenerator.generateSplitPhaseDataset(suffix='')

@@ -13,7 +13,7 @@ class SSIMPlotter(object):
     @classmethod
     def save_plot(cls, model_name, ssim):
         # plot and save to disk
-        full_path = Folders.predictions_folder() + model_name + '_ssim.png'
+        full_path = Folders.predictions_folder() + model_name + '-n{0}/ssim.png'.format(ssim.shape[0])
 
         fig = plt.figure(figsize=(4, 2))
         ax = fig.add_subplot(111)

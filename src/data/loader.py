@@ -8,7 +8,9 @@ class DataLoader(object):
 
     @classmethod
     def load(cls, dataset='ds-lymphoma', set='training', records = -1, separate=True):
-        raw = np.load(Folders.data_folder() + '{0}-{1}.npz'.format(dataset, set), mmap_mode='r')
+        data_path = Folders.data_folder() + '{0}-{1}.npz'.format(dataset, set)
+        if os.path.isfile(data_path):
+            raw = np.load(data_path, mmap_mode='r')
         if records > 0:
             # additional logic for efficient caching of small subsets of records
             raw_trunc = Folders.data_folder() + '{0}-{1}-n{2}.npz'.format(dataset, set, records)
@@ -18,7 +20,10 @@ class DataLoader(object):
                 if separate:
                     return raw_n['data'], raw_n['labels'][:, 0, ...], raw_n['labels'][:, 1, ...]
                 else:
-                    return raw_n['data'], np.moveaxis(np.squeeze(raw_n['labels']), 1, -1)
+                    if len(raw_n['labels'].shape) == 3:
+                        return raw_n['data'][..., np.newaxis], raw_n['labels'][...,np.newaxis]
+                    else:
+                        return raw_n['data'], np.moveaxis(np.squeeze(raw_n['labels']), 1, -1)
             else:
                 data, labels =  raw['data'][0:records, ...], raw['labels'][0:records, ...]
                 np.savez(raw_trunc, data=data, labels=labels)
@@ -26,12 +31,18 @@ class DataLoader(object):
                 if separate:
                     return data, labels[:, 0, ...], labels[:, 1, ...]
                 else:
-                    return data, np.moveaxis(np.squeeze(labels), 1, -1)
+                    if len(labels.shape) == 3:
+                        return data[..., np.newaxis], labels[...,np.newaxis]
+                    else:
+                        return data, np.moveaxis(np.squeeze(labels), 1, -1)
         else:
             if separate:
                 return raw['data'], raw['labels'][:, 0, ...], raw['labels'][:, 1, ...]
             else:
-                return raw['data'], np.moveaxis(np.squeeze(raw['labels']), 1, -1)
+                if len(raw['labels'].shape) == 3:
+                    return raw['data'][..., np.newaxis], raw['labels'][..., np.newaxis]
+                else:
+                    return raw['data'], np.moveaxis(np.squeeze(raw['labels']), 1, -1)
 
     @classmethod
     def load_training(cls, dataset='ds-lymphoma', records=-1, separate=True):
