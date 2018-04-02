@@ -78,7 +78,7 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
                separate=True,  batch_size=32, activation: object='relu',
                last_activation: object='relu', advanced_activations=False,
-               a_only=False, b_only=False, output_depth=2):
+               a_only=False, b_only=False, output_depth=2, save_best_only=True):
     """ Train a unet model and save relevant data """
 
     loss_abbrev = loss
@@ -116,7 +116,7 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
                 loss_abbrev, descriptive_name, suffix_a)
             epoch_a, train_loss_a, val_loss_a = train(model_name_a, modela,
                 train_data, train_label_a, epochs, model_metadata=values,
-                batch_size=batch_size)
+                batch_size=batch_size, save_best_only=save_best_only)
 
         if not a_only:
             model_name_b = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
@@ -128,7 +128,7 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
                               advanced_activations=advanced_activations, output_depth=output_depth)
             epoch_b, train_loss_b, val_loss_b = train(model_name_b, modelb,
                 train_data, train_label_b, epochs, model_metadata=values,
-                batch_size=batch_size)
+                batch_size=batch_size, save_best_only=save_best_only)
 
         return model_name_a, epoch_a, train_loss_a, val_loss_a, \
              model_name_b, epoch_b, train_loss_b, val_loss_b
@@ -144,7 +144,8 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
         model_name = 'unet_{0}-{1}_{2}_{3}'.format(num_layers, filter_size, loss_abbrev, descriptive_name)
 
         epoch, train_loss, val_loss = train(model_name, model, train_data,
-            train_label, epochs, model_metadata=values, batch_size=batch_size)
+            train_label, epochs, model_metadata=values, batch_size=batch_size,
+                save_best_only=save_best_only)
 
         return model_name, epoch, train_loss, val_loss
 
@@ -212,9 +213,9 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
 
 
 # centered text test
-train_unet('text', num_layers=6, filter_size=3,
-    dataset = 'ds-text',
-    learn_rate=1e-4, conv_depth=32, epochs=25,
-    records=-1, separate=False, batch_size=16,
-    activation=A.PReLU, advanced_activations=True,
-    last_activation='sigmoid', output_depth=1)
+# train_unet('text', num_layers=6, filter_size=3,
+#     dataset = 'ds-text', save_best_only=False,
+#     learn_rate=1e-4, conv_depth=32, epochs=25,
+#     records=-1, separate=False, batch_size=16,
+#     activation=A.PReLU, advanced_activations=True,
+#     last_activation='sigmoid', output_depth=1)

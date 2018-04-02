@@ -26,13 +26,16 @@ from src.processing.folders import Folders
 from PIL import Image
 from src.visualization.ssim_plotter import SSIMPlotter
 
-def format_and_save(img_array, output_file, dmin=None, dmax=None):
+def format_and_save(img_array, output_file, dmin=None, dmax=None, transpose=True):
     img_array = img_array.reshape([192, 192])
     if dmin is not None and dmax is not None:
         img_array = (img_array + dmin) / (dmax + dmin)
     else:
         img_array = img_array / np.max(img_array)
-    img = Image.fromarray(np.transpose(np.uint8(255.0 * img_array)))
+    if transpose:
+        img = Image.fromarray(np.transpose(np.uint8(255.0 * img_array)))
+    else:
+        img = Image.fromarray(np.uint8(255.0 * img_array))
     #print('Norm: {0}, Max: {1}\n'.format(dmin, dmax))
     scipy.misc.imsave(output_file, img)
 
@@ -40,7 +43,8 @@ def format_and_save_phase(img_array, output_file):
     plt.imsave(output_file, img_array, cmap=cmocean.cm.phase,  vmin=-np.pi, vmax=np.pi)
 
 def prediction(model_name, data, labels, save_err_img = False,
-               phase_mapping= False, weights_file='weights.h5'):
+               phase_mapping= False, weights_file='weights.h5',
+               transpose=True):
     from src.processing.train import get_unet
     from keras.optimizers import Adam
     #model = get_unet(192, 192, num_layers=6, filter_size=3,
@@ -77,7 +81,7 @@ def prediction(model_name, data, labels, save_err_img = False,
 
     for i in range(predictions.shape[0]):
         file_prefix = mp_folder + '{0:05}-'.format(i)
-        format_and_save(data[i], file_prefix + 'input.png')
+        format_and_save(data[i], file_prefix + 'input.png', transpose=transpose)
 
         # calculate the structural similarity index (SSIM) between prediction and source
         if complex_valued:
@@ -93,9 +97,11 @@ def prediction(model_name, data, labels, save_err_img = False,
                         np.max(labels[i, ..., j]))
 
                 format_and_save(predictions[i, ..., j],
-                    file_prefix + 'pred-{0}.png'.format(name), dmin, dmax)
+                    file_prefix + 'pred-{0}.png'.format(name),
+                    dmin, dmax, transpose=transpose)
                 format_and_save(labels[i, ..., j],
-                    file_prefix + 'label-{0}.png'.format(name), dmin, dmax)
+                    file_prefix + 'label-{0}.png'.format(name),
+                    dmin, dmax, transpose=transpose)
         else:
             ssim[i] = skimage.measure.compare_ssim(predictions[i], labels[i])
 
@@ -103,8 +109,10 @@ def prediction(model_name, data, labels, save_err_img = False,
 
             dmin = np.abs(min(np.min(predictions[i]), np.min(labels[i])))
             dmax = np.abs(max(np.max(predictions[i]), np.max(labels[i])))
-            format_and_save(predictions[i], file_prefix + 'pred.png', dmin, dmax)
-            format_and_save(labels[i], file_prefix + 'label.png', dmin, dmax)
+            format_and_save(predictions[i], file_prefix + 'pred.png',
+                dmin, dmax, transpose = transpose)
+            format_and_save(labels[i], file_prefix + 'label.png',
+                dmin, dmax, transpose = transpose)
             if phase_mapping:
                 # mean phase error accounting for loop-over
                 ms_err[i] = np.mean(np.abs(np.exp(1j * predictions[i]) -  np.exp(1j * labels[i])))
@@ -112,12 +120,15 @@ def prediction(model_name, data, labels, save_err_img = False,
                 format_and_save_phase(labels[i], file_prefix + 'label.png')
             else:
                 ms_err[i] = np.mean(sq_err)
-                format_and_save(predictions[i], file_prefix + 'pred.png', dmin, dmax)
-                format_and_save(labels[i], file_prefix + 'label.png', dmin, dmax)
+                format_and_save(predictions[i], file_prefix + 'pred.png',
+                    dmin, dmax, transpose=transpose)
+                format_and_save(labels[i], file_prefix + 'label.png',
+                    dmin, dmax, transpose=transpose)
 
             if save_err_img:
                 smin, smax = np.min(sq_err), np.max(sq_err)
-                format_and_save(sq_err, file_prefix + 'err.png', smin, smax)
+                format_and_save(sq_err, file_prefix + 'err.png',
+                    smin, smax, transpose=transpose)
 
     # calculate and save statistics over SSIM
     header = 'Structural Similarity Indices for {0}\n'.format(model_name)
@@ -184,3 +195,6 @@ def prediction(model_name, data, labels, save_err_img = False,
 #         dataset='ds-lymphoma-magphase-splitphase')
 # ssim = prediction('unet_6-3_mse_prelu-split-phase-only', data, label_splitphase, phase_mapping=True)
 
+# data, label_text = DataLoader.load_testing(records=-1, separate = False,
+#             dataset='ds-text')
+# ssim = prediction('unet_6-3_mse_text', data, label_text, transpose=False)
