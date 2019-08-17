@@ -6,6 +6,8 @@ import skimage.measure
 import os
 from keras_contrib.losses import DSSIMObjective
 keras.losses.dssim = DSSIMObjective()
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
 import matplotlib
 matplotlib.use('Agg')
@@ -13,6 +15,15 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import cmocean
 import cmocean.cm
+
+import glob
+import numpy as np
+import scipy.signal
+from tqdm import tqdm
+
+from libtiff import TIFF
+
+import gc
 
 
 # from keras.utils.generic_utils import get_custom_objects
@@ -165,6 +176,180 @@ def prediction(model_name, data, labels, save_err_img = False,
     np.savez(mp_folder + 'stats.npz', indexed_ssim_mse)
     SSIMPlotter.save_plot(model_name, ssim)
     return ssim
+
+
+cached_windows = dict()
+
+def create_naive_window(window_size):
+    return np.ones(window_size, window_size)
+
+def create_linear_window(window_size,):
+
+    return np.ones(window_size, window_size)
+
+
+def create_spline_window(window_size, power=2):
+    intersection = int(window_size/4)
+    wind_outer = (abs(2*(scipy.signal.triang(window_size))) ** power)/2
+    wind_outer[intersection:-intersection] = 0
+
+    wind_inner = 1 - (abs(2*(scipy.signal.triang(window_size) - 1)) ** power)/2
+    wind_inner[:intersection] = 0
+    wind_inner[-intersection:] = 0
+
+    wind = wind_inner + wind_outer
+    wind = wind / np.average(wind)
+    return wind
+
+def spline_window_2d(window_size, power=2):
+    global cached_windows
+    key = "{}_{}".format(window_size, power)
+    if key in cached_windows:
+        window = cached_windows[key]
+    else:
+        window = create_spline_window(window_size, power)
+        window = np.expand_dims(np.expand_dims(window, 3), 3)
+        window = window * window.transpose(1, 0, 2)
+        window = window.reshape(window.shape[0], window.shape[1])
+        cached_windows[key] = window
+    return window
+
+
+def pad_image(img, window_size, overlap):
+    aug = int(round(window_size * (1 - 1.0 * overlap)))
+    more_borders = ((aug, aug), (aug, aug))
+    ret = np.pad(img, pad_width=more_borders, mode='reflect')
+    return ret
+
+
+def unpad_image(padded_img, window_size, overlap):
+    aug = int(round(window_size * (1 - 1.0 * overlap)))
+    ret = padded_img[aug:-aug, aug:-aug]
+    return ret
+
+
+def rotate_and_mirror(im):
+    rot_mirror = [np.array(im)]
+    for rot in range(3):
+        rot_mirror.append(np.rot90(np.array(im), axes=(0, 1), k=1+rot))
+    im = np.array(im)[:, ::-1]
+    rot_mirror.append(np.array(im))
+    for rot in range(3):
+        rot_mirror.append(np.rot90(np.array(im), axes=(0, 1), k=1+rot))
+    return rot_mirror
+
+
+def derotate_and_mirror(im_mirrs):
+    origs = [np.array(im_mirrs[0])]
+    for rot in range(3):
+        origs.append(np.rot90(np.array(im_mirrs[1+rot]), axes=(0, 1), k=3-rot))
+    origs.append(np.array(im_mirrs[4])[:, ::-1])
+    for rot in range(3):
+        origs.append(np.rot90(np.array(im_mirrs[5+rot]), axes=(0, 1), k=3-rot)[:, ::-1])
+    return np.mean(origs, axis=0)
+
+
+def create_windowed_patches(model, padded_img, window_size, overlap, batch_size=32):
+    window = spline_window_2d(window_size=window_size, power=2)
+    step = int(window_size * overlap)
+    padx_len = padded_img.shape[0]
+    pady_len = padded_img.shape[1]
+    patches = []
+    for i in range(0, padx_len-window_size+1, step):
+        patches.append([])
+        for j in range(0, pady_len-window_size+1, step):
+            patch = padded_img[i:i+window_size, j:j+window_size]
+            patches[-1].append(patch)
+    patches = np.array(patches)
+    npatches_x, npatches_y, patch_w, patch_h = patches.shape
+    # Unet model expects (ntiles, tile_w, tile_h, tile_ch)
+    patches = patches.reshape(npatches_x * npatches_y, patch_w, patch_h, 1)
+    patches = model.predict(patches, batch_size=batch_size, verbose=0)
+    patches = patches.astype(np.float64)
+    # back to npatches_x, npatches_y, patch_w, patch_h
+    patches = patches.reshape([npatches_x,npatches_y, patch_w, patch_h])
+    windowed_patches = np.array([patch * window for patch in patches])
+    gc.collect()
+    return windowed_patches, patches
+
+
+def merge_patches(patches, window_size, overlap, padded_out_shape):
+    step = int(window_size * overlap)
+    padx_len = padded_out_shape[0]
+    pady_len = padded_out_shape[1]
+    y = np.zeros(padded_out_shape)
+
+    a = 0
+    for i in range(0, padx_len-window_size+1, step):
+        b = 0
+        for j in range(0, pady_len-window_size+1, step):
+            windowed_patch = patches[a, b]
+            y[i:i+window_size, j:j+window_size] = \
+                y[i:i+window_size, j:j+window_size] + windowed_patch
+            b += 1
+        a += 1
+    # normalize (not strictly necessary)
+    return y / ((1.0/overlap) ** 2)
+
+
+def debug_save_images(output_folder, input_name, w_patches, patches, img_pass=-1):
+    debug_dir = os.path.join(output_folder, 'debug')
+    os.makedirs(debug_dir, exist_ok=True)
+    # for idx, w_patch, patch in enumerate(zip(w_patches, patches)):
+    for i in range(w_patches.shape[0]):
+        for j in range(w_patches.shape[1]):
+            scipy.misc.imsave(os.path.join(debug_dir,
+                "{0}_patch_{1}-{2}_w{3}.png".format(input_name, i, j,
+                    img_pass if img_pass > 0 else '')), w_patches[i, j])
+            scipy.misc.imsave(os.path.join(debug_dir,
+                "{0}_patch_{1}-{2}{3}.png".format(input_name, i, j,
+                    img_pass if img_pass > 0 else '')), patches[i, j])
+            w_patches[i, j,0] = 1.0
+            w_patches[i, j, 191] = 1.0
+            w_patches[i, j, :,0] = 1.0
+            w_patches[i, j, :, 191] = 1.0
+
+
+def prediction_with_merge(model_name, input_folder, output_folder, window_size=192,
+                   overlap=0.5, weights_file='weights.h5', batch_size=32,
+                   high_quality=True, debug_images=False):
+    model = keras.models.load_model(Folders.models_folder() + model_name + '/' + weights_file)
+
+    # assume input files are 12-bit tiff format...
+    input_files = glob.glob(input_folder + '*.tif')
+    os.makedirs(output_folder, exist_ok=True)
+
+    for input_file in tqdm(input_files, desc='Overall Progress'):
+        # assume input files are 12-bit tiff format...
+        input_img = TIFF.open(input_file).read_image() / 4095.
+        padded_img = pad_image(input_img, window_size, overlap)
+        input_name = os.path.splitext(os.path.basename(input_file))[0]
+        if high_quality:
+            # predict multiple times on rotated/flipped tiles and average them
+            padded_combos = rotate_and_mirror(padded_img)
+            additional_predictions = []
+            for img_pass, padded_img in enumerate(tqdm(padded_combos, desc='High-Quality Pass')):
+                w_patches, patches = create_windowed_patches(model, padded_img, window_size, overlap, batch_size=batch_size)
+                if debug_images:
+                    debug_save_images(output_folder, input_name, w_patches, patches, img_pass=img_pass)
+                additional_predictions.append(merge_patches(patches, window_size,
+                                                            overlap, padded_out_shape=padded_img.shape))
+            padded_results = derotate_and_mirror(additional_predictions)
+        else:
+            w_patches, patches = create_windowed_patches(model, padded_img, window_size, overlap, batch_size=batch_size)
+            if debug_images:
+                debug_save_images(output_folder, input_name, w_patches, patches)
+            padded_results = merge_patches(patches, window_size, overlap, padded_out_shape=padded_img.shape)
+        prd = unpad_image(padded_results, window_size, overlap)
+        prd = prd[:input_img.shape[0], :input_img.shape[1]]
+
+        # write out the prediction
+        scipy.misc.imsave(os.path.join(output_folder, input_name +".pred.png"), prd)
+    return w_patches, padded_results
+
+
+
+
 
 #data, label_r, label_i = DataLoader.load_testing(records=-1)
 #prediction('unet_6_layers_1e-05_lr_3px_filter_32_convd_i_retrain_50_epoch_mse', data, label_i)
