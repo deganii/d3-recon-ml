@@ -7,8 +7,8 @@ from keras_contrib.losses import DSSIMObjective
 from keras.layers import Activation
 from src.data.loader import DataLoader
 from keras.optimizers import Adam
-from src.archs.unet import get_unet
-from src.archs.dcgan import DCGAN, DCGAN_discriminator
+from src.arch.unet import get_unet
+from src.arch.dcgan import DCGAN, DCGAN_discriminator
 from keras.callbacks import ModelCheckpoint, CSVLogger, TensorBoard
 import keras.backend as K
 from src.processing.folders import Folders
