@@ -3,8 +3,14 @@ import os
 class Folders(object):
 
     @classmethod
+    def get_base_folder(cls):
+        # return '../../{0}/'
+        # keep data on separate drive
+        return 'f:/d3-recon-ml/{0}/'
+
+    @classmethod
     def get_folder(cls, name):
-        relative_path = '../../{0}/'.format(name)
+        relative_path = Folders.get_base_folder().format(name)
         if not os.path.exists(relative_path):
             os.makedirs(relative_path)
         return relative_path

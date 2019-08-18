@@ -18,21 +18,26 @@ import pandas as pd
 import inspect
 import csv
 import keras.layers.advanced_activations as A
+import keras.backend
 
 def get_callbacks(model_name, batch_size = 32, save_best_only = True):
     models_folder = Folders.models_folder()
     file_suffix = '_{epoch:02d}.h5'
     if save_best_only:
         file_suffix = '.h5'
+
     model_checkpoint = ModelCheckpoint(models_folder + "{0}/weights".format(model_name) + file_suffix,
                                        monitor='val_loss', save_best_only=save_best_only)
     csv_logger = CSVLogger(models_folder + "{0}/perflog.csv".format(model_name),
                                             separator=',', append=False)
-    tensorboard = TensorBoard(log_dir=models_folder + model_name, histogram_freq=0,
+    callbacks = [model_checkpoint, csv_logger]
+    if keras.backend.backend() == 'tensoflow':
+        tensorboard = TensorBoard(log_dir=models_folder + model_name, histogram_freq=0,
                               batch_size=batch_size, write_graph=True, write_grads=False,
                               write_images=True, embeddings_freq=0,
                               embeddings_layer_names=None, embeddings_metadata=None)
-    return [model_checkpoint, csv_logger, tensorboard]
+        callbacks.append(tensorboard)
+    return callbacks
 
 
 def train(model_name, model, data, labels, epochs, save_summary=True,
