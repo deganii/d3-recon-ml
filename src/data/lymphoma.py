@@ -190,8 +190,3 @@ class LymphomaGenerator(object):
 
 
 
-#LymphomaGenerator.generateImages('ds-lymphoma')
-#LymphomaGenerator.partitionTrainingAndTestSet('ds-lymphoma')
-# LymphomaGenerator.generateMegPhaseDataset(suffix='')
-# LymphomaGenerator.generateSplitPhaseDataset(suffix='')
-# LymphomaGenerator.generateSplitPhaseDataset(suffix='')
