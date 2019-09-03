@@ -2,7 +2,7 @@ import matplotlib
 import matplotlib.mlab as mlab
 import numpy as np
 from scipy.stats import norm
-
+from scipy.stats import pearson3
 from src.processing.folders import Folders
 
 matplotlib.use('Agg')
@@ -23,15 +23,20 @@ class SSIMPlotter(object):
 
         # add a 'best fit' gaussian
         (mu, sigma) = norm.fit(ssim)
-        y = mlab.normpdf(bins, mu, sigma)
-        l = plt.plot(bins, y, 'r--', linewidth=2)
+        pear_args = pearson3.fit(ssim)
+        (skew, mu, sigma) = pear_args
 
-        fig.suptitle( model_name + '\n$\mu={0:.2f},\ \sigma={1:.2f}$'.format(mu, sigma),
+        y_pear = pearson3.pdf(bins, *pear_args[:-2], loc=pear_args[-2], scale=pear_args[-1])
+        y = mlab.normpdf(bins, mu, sigma)
+        #l = plt.plot(bins, y, 'r--', linewidth=2)
+        l2 = plt.plot(bins, y_pear, 'r--', linewidth=2)
+
+        fig.suptitle( model_name + '\n$\mu={0:.2f},\ \sigma={1:.2f}, skew={2:.2f}$'.format(mu, sigma, skew),
                      fontsize=10, fontweight='bold')
         fig.subplots_adjust(left=0.17)
         fig.subplots_adjust(bottom=0.27)
         fig.subplots_adjust(right=0.96)
-        fig.subplots_adjust(top=0.84)
+        fig.subplots_adjust(top=0.82)
 
         fig.canvas.draw()
         plt.grid(True)
@@ -39,5 +44,7 @@ class SSIMPlotter(object):
         plt.close(fig)
 
 # Test case
-# SSIMPlotter.save_plot('unet_3_layers_0.0001_lr_3px_filter_1_convd_i',
-#                      np.asarray([0.5, 0.3, 0.4, 0.5, 0.5, 0.4, 0.8, 0.2, 0.3, 0.4, 0.4]))
+model_name = 'unet_6-3_mse_prelu-test-magphase_magnitude'
+ssim_file = np.load(Folders.predictions_folder() + model_name + '-n1404/stats.npz')
+ssim = ssim_file['arr_0'][:,1]
+SSIMPlotter.save_plot(model_name,ssim)
