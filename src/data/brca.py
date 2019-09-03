@@ -203,8 +203,8 @@ class BrCaGenerator(object):
             np.savez(os.path.join(output_folder, set_name + '-all.npz'), data=data, labels=labels)
 
 
-
-BrCaGenerator.generateImages('ds-brca-512', tile=(512,512))
+if __name__ == "__main__":
+    BrCaGenerator.generateImages('ds-brca-512', tile=(512,512))
 #BrCaGenerator.partitionTrainingAndTestSet('ds-brca')
 # BrCaGenerator.generateMegPhaseDataset(suffix='')
 # BrCaGenerator.generateSplitPhaseDataset(suffix='')

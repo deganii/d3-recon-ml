@@ -73,16 +73,35 @@ from src.data.loader import DataLoader
 # import subprocess
 # subprocess.call(['sudo','shutdown','-h','0'])
 
-# train_unet('text-test', dataset='ds-text', records=64,
+
+# train_unet('text-full', dataset='ds-text', records=-1,
 #            num_layers=6, filter_size=3,
-#            learn_rate=1e-4, conv_depth=32, epochs=25,
+#            learn_rate=1e-4, conv_depth=32, epochs=100,
 #            batch_size=16, activation=A.PReLU,
 #            separate=False, advanced_activations=True,
 #            last_activation='sigmoid', output_depth=1)
 # data, label_text = DataLoader.load_testing(records=-1, separate = False,
 #             dataset='ds-text')
-# ssim = prediction('unet_6-3_mse_text-test', data, label_text, transpose=False)
+# ssim = prediction('unet_6-3_mse_text-full', data, label_text, transpose=False)
+
+# train_unet('mnist-3750', dataset='mnist-diffraction', records=-1,
+#            num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=12,
+#            batch_size=16, activation=A.PReLU,
+#            separate=False, advanced_activations=True,
+#            last_activation='sigmoid', output_depth=1)
+data, label_text = DataLoader.load_testing(records=-1, separate = False,
+            dataset='mnist-diffraction')
+ssim = prediction('unet_6-3_mse_mnist-3750', data, label_text, transpose=False)
+
 
 # TODO: Create a simple folder that can be uploaded to the "Experiments" dropbox
-# Todo: Add platform and GPU to the model metadata file
-# Todo: Change model name to remove "unet_6_3" etc. This is now in metadata.csv
+# TODO: Add platform and GPU to the model metadata file
+# TODO: Change model name to remove "unet_6_3" etc. This is now in metadata.csv
+# TODO: Add a text descrption the "train_unet" function which gets stored in metadata.csv
+# TODO: Add model train/predict timings for easy performance comparison
+# TODO: Organize SSIM best to worst, and create a "sample" folder with some examples
+# TODO: Predict on every epoch for small subset and save to an evolution folder
+# TODO: update train/validation curve on each epoch for live monitoring
+# TODO: Add rotation/stretching and partial predictions (train on whole)
+# TODO: vectorize graphs so they are easily incorporated into paper.

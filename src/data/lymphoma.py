@@ -187,6 +187,3 @@ class LymphomaGenerator(object):
         labels = labels[..., np.newaxis]
         if save_npz:
             np.savez(os.path.join(output_folder, set_name + '-all.npz'), data=data, labels=labels)
-
-
-

@@ -1,5 +1,10 @@
 
 from __future__ import print_function
+
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+
 import PIL.ImageOps
 # import keras
 import scipy, scipy.ndimage
@@ -211,7 +216,7 @@ class DiffractionGenerator(object):
         # propagate to a hologram
         holo = np.abs(DiffractionGenerator.freeSpacePropagation(recon, upsample=1, z=7e-4))
         # image.save('output.png')
-        scipy.misc.imsave('holo.png', holo)
+        scipy.misc.imsave('holo.png', np.abs(holo))
         scipy.misc.imsave('label.png', np.abs(recon))
 
         return holo, recon
@@ -263,4 +268,87 @@ class DiffractionGenerator(object):
         DiffractionGenerator.generateDiffractionDataset(test_data, test_labels, test_destination, 'test')
 
 
+    @classmethod
+    def generateMNISTSet(cls, source_data, source_labels, destination,
+                         npzName, save=True, dx=0.8, dy=0.8, z=0.2, lmbda=405):
+        #bf_image, label = BrightfieldGenerator.generateImage(destination,seq,save=save)
+        # load source dataset
+        num_images = source_data.shape[0]
+        data = np.zeros([num_images, 192, 192], dtype='float32', )
 
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+
+        for i in range(num_images):
+            image = source_data[i,:].reshape([40,40])
+            label = source_labels[i] # should be a number
+            holo = DiffractionGenerator.freeSpacePropagation(image, upsample=1, z=7e-4)
+            data[i, :] = np.abs(holo)
+
+        # labels haven't changed...
+        dir = os.path.dirname(os.path.dirname(destination))
+        np.savez(os.path.join(dir,npzName + '.npz'), data=data, labels=source_labels)
+        return data, source_labels
+
+
+    @classmethod
+    def diffractMNIST(cls, set_name='mnist-diffraction'):
+        from keras.datasets import mnist
+
+        image_folder = Folders.data_folder() + set_name + '/'
+        os.makedirs(image_folder, exist_ok=True)
+
+        (train_data, train_labels), (test_data, test_labels) = mnist.load_data()
+        train_num = 3000
+        test_num = 750
+        data_train = np.zeros([train_num, 192, 192], dtype='float32', )
+        labels_train = np.zeros([train_num, 192, 192], dtype='float32', )
+        data_test = np.zeros([test_num, 192, 192], dtype='float32', )
+        labels_test = np.zeros([test_num, 192, 192], dtype='float32', )
+
+        for t_idx in range(150,train_num): #, t in enumerate(train_data):
+            # mnist "data" is our "label"
+            norm = (255. - train_data[t_idx]) / 255.
+            upsampled = scipy.ndimage.zoom(norm, 3.0, order=3)
+            upsampled = np.pad(upsampled, (192-upsampled.shape[0]) // 2, mode='edge')
+            holo = np.abs(DiffractionGenerator.freeSpacePropagation(upsampled,
+                    z=2.5e-3, lmbda = 405e-9, upsample=2))
+            holo = scipy.ndimage.zoom(holo, 0.251, order=3)
+
+            data_train[t_idx] = holo
+            labels_train[t_idx] = upsampled
+            holoDestFilename = '{0:05}-H-{1}.png'.format(t_idx,train_labels[t_idx])
+            magnDestFilename = '{0:05}-M-{1}.png'.format(t_idx,train_labels[t_idx])
+            # save hologram and magnitude
+            scipy.misc.imsave(image_folder +  holoDestFilename, np.squeeze(holo))
+            scipy.misc.imsave(image_folder +  magnDestFilename, np.squeeze(upsampled))
+            if t_idx % 100 == 0:
+                print("train: {0}\n".format(t_idx))
+
+        for t_idx in range(test_num):
+            # mnist "data" is our "label"
+            norm = (255. - test_data[t_idx]) / 255.
+            upsampled = scipy.ndimage.zoom(norm, 3.0, order=3)
+            upsampled = np.pad(upsampled, (192-upsampled.shape[0]) // 2, mode='edge')
+            holo = np.abs(DiffractionGenerator.freeSpacePropagation(upsampled,
+                    z=2.5e-3, lmbda = 405e-9, upsample=2))
+            holo = scipy.ndimage.zoom(holo, 0.251, order=3)
+
+            data_test[t_idx] = holo
+            labels_test[t_idx] = upsampled
+            holoDestFilename = '{0:05}-H-{1}.png'.format(train_num+t_idx,test_labels[t_idx])
+            magnDestFilename = '{0:05}-M-{1}.png'.format(train_num+t_idx,test_labels[t_idx])
+            # save hologram and magnitude
+            scipy.misc.imsave(image_folder +  holoDestFilename, np.squeeze(holo))
+            scipy.misc.imsave(image_folder +  magnDestFilename, np.squeeze(upsampled))
+            if t_idx % 100 == 0:
+                print("test: {0}\n".format(t_idx))
+
+        np.savez(os.path.join(Folders.data_folder(), set_name + '-training.npz'),
+                 data=data_train, labels=labels_train)
+        np.savez(os.path.join(Folders.data_folder(), set_name + '-test.npz'),
+                  data=data_test, labels=labels_test)
+
+
+if __name__ == "__main__":
+    DiffractionGenerator.diffractMNIST()
