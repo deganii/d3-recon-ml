@@ -7,7 +7,7 @@ from keras import losses
 import keras_contrib.backend as KC
 
 # an average of DSSIM and MSE
-def mse_ssim_loss():
+def mse_dssim_loss():
     dssim = DSSIMObjective()
     mse = losses.mean_squared_error
 
@@ -19,5 +19,5 @@ def mse_ssim_loss():
     # Return a function
     return loss
 
-
-get_custom_objects().update({"mse_ssim": mse_ssim_loss()})
+get_custom_objects().update({"dssim": DSSIMObjective})
+get_custom_objects().update({"mse_dssim": mse_dssim_loss()})

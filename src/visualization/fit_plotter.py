@@ -41,24 +41,21 @@ class FitPlotter(object):
         #plt.show()
         #plt.imsave(file)
 
-        plt.savefig(full_path)
+        plt.savefig(full_path + '.png', format='png')
+        plt.savefig(full_path + '.svg', format='svg')
         plt.close(fig)
 
 # Test case
+if __name__ == "__main__":
+    root_dir = 'C:\\dev\\courses\\2.131 - Advanced Instrumentation\\data_lpf\\32x6-LSTM-46,146-Params\\'
+    csv = np.genfromtxt(root_dir+'training.csv', delimiter=',')
 
-#
+    FitPlotter.save_plot({'loss':csv[:, 4], 'val_loss':csv[:, 2]},
+                         root_dir + 'training.png', figsize=(4,2),
+                         y_title='Loss %',linewidth=2.0)
 
-root_dir = 'C:\\dev\\courses\\2.131 - Advanced Instrumentation\\data_lpf\\32x6-LSTM-46,146-Params\\'
-csv = np.genfromtxt(root_dir+'training.csv', delimiter=',')
+    FitPlotter.save_plot({'loss':csv[:, 3], 'val_loss':csv[:, 1]},
+                         root_dir + 'accuracy.png', figsize=(4,2),
+                         y_title='Accuracy %', linewidth=2.0)
 
-
-FitPlotter.save_plot({'loss':csv[:, 4], 'val_loss':csv[:, 2]},
-                     root_dir + 'training.png', figsize=(4,2),
-                     y_title='Loss %',linewidth=2.0)
-
-FitPlotter.save_plot({'loss':csv[:, 3], 'val_loss':csv[:, 1]},
-                     root_dir + 'accuracy.png', figsize=(4,2),
-                     y_title='Accuracy %', linewidth=2.0)
-
-
-#FitPlotter.save_plot({'loss':[0.237664829282,0.237664833081], 'val_loss':[0.236981078982, 0.236981078982]}, 'unet-test.png')
+    #FitPlotter.save_plot({'loss':[0.237664829282,0.237664833081], 'val_loss':[0.236981078982, 0.236981078982]}, 'unet-test.png')

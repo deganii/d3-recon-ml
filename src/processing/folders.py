@@ -32,6 +32,6 @@ class Folders(object):
         return Folders.get_folder('predictions')
 
     @classmethod
-    def visualizations_folder(cls):
-        return Folders.get_folder('visualizations')
+    def experiments_folder(cls):
+        return Folders.get_folder('experiments')
 

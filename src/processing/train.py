@@ -1,5 +1,9 @@
 import os
 import sys
+import time
+
+
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
 import numpy as np
@@ -13,6 +17,7 @@ from keras.callbacks import ModelCheckpoint, CSVLogger, TensorBoard
 import keras.backend as K
 from src.processing.folders import Folders
 from src.visualization.fit_plotter import FitPlotter
+
 from keras.utils import generic_utils
 import pandas as pd
 import inspect
@@ -20,8 +25,16 @@ import csv
 import keras.layers.advanced_activations as A
 import keras.backend
 
-def get_callbacks(model_name, batch_size = 32, save_best_only = True):
+from src.callbacks.fit_plotter_callback import FitPlotterCallback
+from src.callbacks.time_history_callback import TimeHistory
+from src.callbacks.ssim_plotter_callback import SSIMPlotterCallback
+from src.callbacks.model_to_experiment import ModelToExperiment
+def get_callbacks(model_name, experiment_id, batch_size = 32,
+                  save_best_only = True, test_data=None, test_labels=None):
     models_folder = Folders.models_folder()
+    experiments_folder = Folders.experiments_folder()
+    os.makedirs(experiments_folder + experiment_id, exist_ok=True)
+
     file_suffix = '_{epoch:02d}.h5'
     if save_best_only:
         file_suffix = '.h5'
@@ -30,8 +43,13 @@ def get_callbacks(model_name, batch_size = 32, save_best_only = True):
                                        monitor='val_loss', save_best_only=save_best_only)
     csv_logger = CSVLogger(models_folder + "{0}/perflog.csv".format(model_name),
                                             separator=',', append=False)
-    callbacks = [model_checkpoint, csv_logger]
-    if keras.backend.backend() == 'tensoflow':
+    fit_plotter = FitPlotterCallback(model_name)
+    time_history = TimeHistory(model_name, experiment_id)
+    ssim_plotter = SSIMPlotterCallback(model_name, experiment_id, test_data, test_labels)
+    copycallback = ModelToExperiment(model_name, experiment_id)
+    callbacks = [model_checkpoint, csv_logger, fit_plotter, time_history, ssim_plotter, copycallback]
+
+    if keras.backend.backend() == 'tensorflow':
         tensorboard = TensorBoard(log_dir=models_folder + model_name, histogram_freq=0,
                               batch_size=batch_size, write_graph=True, write_grads=False,
                               write_images=True, embeddings_freq=0,
@@ -41,10 +59,12 @@ def get_callbacks(model_name, batch_size = 32, save_best_only = True):
 
 
 def train(model_name, model, data, labels, epochs, save_summary=True,
-          batch_size=32, save_best_only=True, model_metadata=None):
+          batch_size=32, save_best_only=True, model_metadata=None,
+          test_data=None, test_labels=None):
     """ Train a generic model and save relevant data """
     models_folder = Folders.models_folder()
     os.makedirs(models_folder + model_name, exist_ok=True)
+    experiment_id = time.strftime("%Y%m%d-%H%M%S") + '_' + model_name
 
     if save_summary:
         def summary_saver(s):
@@ -53,20 +73,23 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
         model.summary(print_fn=summary_saver)
 
     if model_metadata is not None:
-        # save to a csv
-        with open(models_folder + model_name +'/metadata.csv', 'w') as f:
-            w = csv.writer(f)
-            w.writerows(model_metadata.items())
+        model_metadata['model_name'] = model_name
+        save_metadata(model_metadata)
 
     # Step 2: train and save best weights for the given architecture
     print('-' * 30)
     print('Fitting model {0}...'.format(model_name))
     print('-' * 30)
-    history = model.fit(data, labels, batch_size=batch_size, epochs=epochs, verbose=1, shuffle=True,
-             validation_split=0.2, callbacks=get_callbacks(model_name, batch_size=batch_size, save_best_only=save_best_only))
+    history = model.fit(
+        data, labels, batch_size=batch_size,
+        epochs=epochs, verbose=1, shuffle=True,
+        validation_split=0.2, callbacks=get_callbacks(
+            model_name, experiment_id, batch_size=batch_size,
+            save_best_only=save_best_only,
+            test_data=test_data, test_labels=test_labels))
 
     # Step 3: Plot the validation results of the model, and save the performance data
-    FitPlotter.save_plot(history.history, '{0}/train_validation.png'.format(model_name))
+    FitPlotter.save_plot(history.history, '{0}/train_validation'.format(model_name))
 
     val_loss = np.asarray(history.history['val_loss'])
     min_loss_epoch = np.argmin(val_loss)
@@ -78,12 +101,34 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
     # (TODO) Step 3: Save other visuals
 
 
+def save_metadata(model_metadata):
+    models_folder = Folders.models_folder()
+    model_name = model_metadata['model_name']
+    with open(models_folder + model_name + '/metadata.csv', 'w') as f:
+        for k, v in model_metadata.items():
+            f.write('{0}: {1}\n'.format(k, v))
+
+def extract_metadata(frame):
+    _, _, _, values = inspect.getargvalues(frame)
+    ignore_keys = ['frame', 'd_raw', 'metadata']
+    metadata = {}
+    for k,v in values.items():
+        if k not in ignore_keys:
+            if str(v).startswith('<class'):
+                v = v.__name__
+            metadata[k] = v
+    metadata['backend'] = keras.backend.backend()
+    metadata['platform'] = sys.platform
+    metadata['python_version'] = sys.version
+    return metadata
+
 def train_unet(descriptive_name, dataset='ds-lymphoma',
                num_layers=6, filter_size=3, conv_depth=32,
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
                separate=True,  batch_size=32, activation: object='relu',
                last_activation: object='relu', advanced_activations=False,
-               a_only=False, b_only=False, output_depth=2, save_best_only=True):
+               a_only=False, b_only=False, output_depth=2,
+               save_best_only=True, long_description=''):
     """ Train a unet model and save relevant data """
 
     loss_abbrev = loss
@@ -91,11 +136,11 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
         loss_abbrev = 'dssim'
 
     # gather up the params
-    frame = inspect.currentframe()
-    _, _, _, values = inspect.getargvalues(frame)
+    metadata = extract_metadata(inspect.currentframe())
 
     # Step 1: load data
     d_raw = DataLoader.load_training(dataset=dataset, records=records, separate=separate)
+    d_test_raw = DataLoader.load_testing(dataset=dataset, records=records, separate=separate)
 
     # Step 2: Configure architecture
     # Step 3: Configure Training Parameters and Train
@@ -117,41 +162,37 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
                               conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
                               last_activation=last_activation, activation=activation,
                               advanced_activations=advanced_activations, output_depth=1)
-            model_name_a = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
-                loss_abbrev, descriptive_name, suffix_a)
+            model_name_a = '{0}_{1}'.format(descriptive_name, suffix_a)
             epoch_a, train_loss_a, val_loss_a = train(model_name_a, modela,
-                train_data, train_label_a, epochs, model_metadata=values,
+                train_data, train_label_a, epochs, model_metadata=metadata,
                 batch_size=batch_size, save_best_only=save_best_only)
 
         if not a_only:
-            model_name_b = 'unet_{0}-{1}_{2}_{3}_{4}'.format(num_layers, filter_size,
-                loss_abbrev, descriptive_name, suffix_b)
+            model_name_b = '{0}_{1}'.format(descriptive_name, suffix_b)
             # output_depth = 2 if split_b else 1
             modelb = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
-                               conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
+                              conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
                               last_activation=last_activation, activation=activation,
                               advanced_activations=advanced_activations, output_depth=output_depth)
             epoch_b, train_loss_b, val_loss_b = train(model_name_b, modelb,
-                train_data, train_label_b, epochs, model_metadata=values,
+                train_data, train_label_b, epochs, model_metadata=metadata,
                 batch_size=batch_size, save_best_only=save_best_only)
 
         return model_name_a, epoch_a, train_loss_a, val_loss_a, \
              model_name_b, epoch_b, train_loss_b, val_loss_b
     else:
         train_data, train_label = d_raw
+        test_data, test_label = d_test_raw
         img_rows, img_cols = train_data.shape[1], train_data.shape[2]
 
         model = get_unet(img_rows, img_cols, num_layers=num_layers, filter_size=filter_size,
                          conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
                          output_depth=output_depth, activation=activation, advanced_activations=advanced_activations,
                          last_activation=last_activation)
-
-        model_name = 'unet_{0}-{1}_{2}_{3}'.format(num_layers, filter_size, loss_abbrev, descriptive_name)
-
+        model_name = descriptive_name
         epoch, train_loss, val_loss = train(model_name, model, train_data,
-            train_label, epochs, model_metadata=values, batch_size=batch_size,
-                save_best_only=save_best_only)
-
+            train_label, epochs, model_metadata=metadata, batch_size=batch_size,
+                save_best_only=save_best_only, test_data=test_data, test_labels=test_label)
         return model_name, epoch, train_loss, val_loss
 
 # train a single unet on a small dataset

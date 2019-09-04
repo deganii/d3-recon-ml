@@ -14,7 +14,7 @@ if platform == "win32":
 import keras.layers.advanced_activations as A
 
 from src.processing.train import train_unet
-from src.loss.avg import mse_ssim_loss
+from src.loss.avg import mse_dssim_loss
 from src.processing.predict import prediction
 from src.processing.predict import prediction_with_merge
 from src.data.loader import DataLoader
@@ -84,20 +84,24 @@ from src.data.loader import DataLoader
 #             dataset='ds-text')
 # ssim = prediction('unet_6-3_mse_text-full', data, label_text, transpose=False)
 
-# train_unet('mnist-3750', dataset='mnist-diffraction', records=-1,
-#            num_layers=6, filter_size=3,
-#            learn_rate=1e-4, conv_depth=32, epochs=12,
-#            batch_size=16, activation=A.PReLU,
-#            separate=False, advanced_activations=True,
-#            last_activation='sigmoid', output_depth=1)
-data, label_text = DataLoader.load_testing(records=-1, separate = False,
-            dataset='mnist-diffraction')
-ssim = prediction('unet_6-3_mse_mnist-3750', data, label_text, transpose=False)
+train_unet('mnist-metatest', dataset='mnist-diffraction', records=256,
+           num_layers=6, filter_size=3,
+           learn_rate=1e-4, conv_depth=32, epochs=12,
+           batch_size=16, activation=A.PReLU,
+           separate=False, advanced_activations=True,
+           last_activation='sigmoid', output_depth=1,
+           long_description='This is a simple/minimal test to ensure all \
+            callbacks are working')
+
+# data, label_text = DataLoader.load_testing(records=-1, separate = False,
+#             dataset='mnist-diffraction')
+# ssim = prediction('unet_6-3_mse_mnist-3750', data, label_text, transpose=False)
 
 
 # TODO: Create a simple folder that can be uploaded to the "Experiments" dropbox
-# TODO: Add platform and GPU to the model metadata file
-# TODO: Change model name to remove "unet_6_3" etc. This is now in metadata.csv
+# DONE: Add platform and GPU to the model metadata file
+# TODO: Test AWS vs. local GPU performance
+# DONE: Change model name to remove "unet_6_3" etc. This is now in metadata.csv
 # TODO: Add a text descrption the "train_unet" function which gets stored in metadata.csv
 # TODO: Add model train/predict timings for easy performance comparison
 # TODO: Organize SSIM best to worst, and create a "sample" folder with some examples

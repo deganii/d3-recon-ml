@@ -17,6 +17,7 @@ import cmocean
 import cmocean.cm
 
 import glob
+import zipfile
 import numpy as np
 import scipy.signal
 from tqdm import tqdm
@@ -49,27 +50,39 @@ def format_and_save(img_array, output_file, dmin=None, dmax=None, transpose=True
         img = Image.fromarray(np.uint8(255.0 * img_array))
     #print('Norm: {0}, Max: {1}\n'.format(dmin, dmax))
     scipy.misc.imsave(output_file, img)
+    return img
 
 def format_and_save_phase(img_array, output_file):
     plt.imsave(output_file, img_array, cmap=cmocean.cm.phase,  vmin=-np.pi, vmax=np.pi)
+    return Image.open(output_file)
+
+def update_saved_lists(i, img, best, best_list, worst, worst_list, tiled_imgs, tiled_list):
+    if i in tiled_list:
+        tiled_imgs.append(img)
+    if i == best:
+        best_list.append(img)
+    if i == worst:
+        worst_list.append(img)
 
 def prediction(model_name, data, labels, save_err_img = False,
-               phase_mapping= False, weights_file='weights.h5',
-               transpose=True):
-    from src.processing.train import get_unet
-    from keras.optimizers import Adam
-    #model = get_unet(192, 192, num_layers=6, filter_size=3,
-    #                            conv_depth=32, optimizer=Adam(lr=1e-3), loss='mse')
-    #model.load_weights(Folders.models_folder() + model_name + '/' + weights_file)
-    model = keras.models.load_model(Folders.models_folder() + model_name + '/' + weights_file)
-    mp_folder = Folders.predictions_folder() + model_name + '-n{0}/'.format(data.shape[0])
+               phase_mapping=False, weights_file='weights.h5',
+               transpose=True, model=None, mp_folder=None,
+               save_n=-1, zip_images=False, tiled_list=None):
+
+    if model is None:
+        model = keras.models.load_model(Folders.models_folder() + model_name + '/' + weights_file)
+    if mp_folder is None:
+        mp_folder = Folders.predictions_folder() + model_name + '-n{0}/'.format(data.shape[0])
+    mp_images_folder = mp_folder + 'images/'
+
     os.makedirs(mp_folder, exist_ok=True)
+    os.makedirs(mp_images_folder, exist_ok=True)
+
     predictions = model.predict(data, batch_size=32, verbose=0)
 
     predictions = predictions.astype(np.float64)
     # check if the network predicts the complex valued image or just one component
     complex_valued = predictions.shape[-1] == 2
-
 
     # we are color-mapping a phase pre
     if phase_mapping and complex_valued:
@@ -90,9 +103,25 @@ def prediction(model_name, data, labels, save_err_img = False,
         ssim = np.empty([predictions.shape[0]])
         ms_err = np.empty([predictions.shape[0]])
 
-    for i in range(predictions.shape[0]):
-        file_prefix = mp_folder + '{0:05}-'.format(i)
-        format_and_save(data[i], file_prefix + 'input.png', transpose=transpose)
+    if save_n < 0 or save_n > predictions.shape[0]:
+        save_n = predictions.shape[0]
+
+    best, worst = np.argmax(ssim), np.argmin(ssim)
+    save_list = list(range(save_n))
+    save_list.append(best)
+    save_list.append(worst)
+
+    if tiled_list is None:
+        tiled_list = [0, 1, 2]
+    tiled_imgs = []
+    best_imgs = []
+    worst_imgs = []
+
+    for i in save_list:
+        file_prefix = mp_images_folder + '{0:05}-'.format(i)
+        input_img = format_and_save(data[i], file_prefix + 'input.png', transpose=transpose)
+        update_saved_lists(i,input_img,best,best_imgs,worst,worst_imgs,tiled_imgs,tiled_list)
+
 
         # calculate the structural similarity index (SSIM) between prediction and source
         if complex_valued:
@@ -107,12 +136,13 @@ def prediction(model_name, data, labels, save_err_img = False,
                 dmax = max(np.max(predictions[i, ..., j]),
                         np.max(labels[i, ..., j]))
 
-                format_and_save(predictions[i, ..., j],
+                pred = format_and_save(predictions[i, ..., j],
                     file_prefix + 'pred-{0}.png'.format(name),
                     dmin, dmax, transpose=transpose)
-                format_and_save(labels[i, ..., j],
+                label = format_and_save(labels[i, ..., j],
                     file_prefix + 'label-{0}.png'.format(name),
                     dmin, dmax, transpose=transpose)
+
         else:
             ssim[i] = skimage.measure.compare_ssim(predictions[i], labels[i])
 
@@ -120,26 +150,38 @@ def prediction(model_name, data, labels, save_err_img = False,
 
             dmin = np.abs(min(np.min(predictions[i]), np.min(labels[i])))
             dmax = np.abs(max(np.max(predictions[i]), np.max(labels[i])))
-            format_and_save(predictions[i], file_prefix + 'pred.png',
+            pred=format_and_save(predictions[i], file_prefix + 'pred.png',
                 dmin, dmax, transpose = transpose)
-            format_and_save(labels[i], file_prefix + 'label.png',
+            label=format_and_save(labels[i], file_prefix + 'label.png',
                 dmin, dmax, transpose = transpose)
             if phase_mapping:
                 # mean phase error accounting for loop-over
                 ms_err[i] = np.mean(np.abs(np.exp(1j * predictions[i]) -  np.exp(1j * labels[i])))
-                format_and_save_phase(predictions[i], file_prefix + 'pred.png')
-                format_and_save_phase(labels[i], file_prefix + 'label.png')
+                pred = format_and_save_phase(predictions[i], file_prefix + 'pred.png')
+                label = format_and_save_phase(labels[i], file_prefix + 'label.png')
             else:
                 ms_err[i] = np.mean(sq_err)
-                format_and_save(predictions[i], file_prefix + 'pred.png',
+                pred = format_and_save(predictions[i], file_prefix + 'pred.png',
                     dmin, dmax, transpose=transpose)
-                format_and_save(labels[i], file_prefix + 'label.png',
+                label = format_and_save(labels[i], file_prefix + 'label.png',
                     dmin, dmax, transpose=transpose)
 
             if save_err_img:
                 smin, smax = np.min(sq_err), np.max(sq_err)
-                format_and_save(sq_err, file_prefix + 'err.png',
+                err = format_and_save(sq_err, file_prefix + 'err.png',
                     smin, smax, transpose=transpose)
+                update_saved_lists(i, err, best, best_imgs, worst, worst_imgs, tiled_imgs, tiled_list)
+
+        update_saved_lists(i,pred,best,best_imgs,worst,worst_imgs,tiled_imgs,tiled_list)
+        update_saved_lists(i, label, best, best_imgs, worst, worst_imgs, tiled_imgs, tiled_list)
+
+    if zip_images:
+        with zipfile.ZipFile(mp_folder+'images.zip', "w", zipfile.ZIP_DEFLATED) as zipf:
+            for fp in glob.glob(os.path.join(mp_images_folder, "**/*")):
+                base = os.path.commonpath([mp_images_folder, fp])
+                zipf.write(fp, arcname=fp.replace(base, ""))
+        # os.rmdir(mp_images_folder)
+
 
     # calculate and save statistics over SSIM
     header = 'Structural Similarity Indices for {0}\n'.format(model_name)
@@ -174,8 +216,8 @@ def prediction(model_name, data, labels, save_err_img = False,
 
     np.savetxt(mp_folder + 'stats.txt', indexed_ssim_mse, header=header, fmt="%i %10.5f %10.5f")
     np.savez(mp_folder + 'stats.npz', indexed_ssim_mse)
-    SSIMPlotter.save_plot(model_name, ssim)
-    return ssim
+    SSIMPlotter.save_plot(model_name, ssim, mp_folder=mp_folder, fit_type='best')
+    return ssim, tiled_imgs, best_imgs, worst_imgs
 
 
 cached_windows = dict()

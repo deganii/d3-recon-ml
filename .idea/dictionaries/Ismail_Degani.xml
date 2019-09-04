@@ -3,6 +3,7 @@
     <words>
       <w>dcgan</w>
       <w>relu</w>
+      <w>ssim</w>
     </words>
   </dictionary>
 </component>

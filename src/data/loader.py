@@ -25,7 +25,9 @@ class DataLoader(object):
                     else:
                         return raw_n['data'], np.moveaxis(np.squeeze(raw_n['labels']), 1, -1)
             else:
-                data, labels =  raw['data'][0:records, ...], raw['labels'][0:records, ...]
+                if records > raw['data'].shape[0]:
+                    records = raw['data'].shape[0]
+                data, labels = raw['data'][0:records, ...], raw['labels'][0:records, ...]
                 np.savez(raw_trunc, data=data, labels=labels)
 
                 if separate:
