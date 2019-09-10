@@ -42,8 +42,29 @@ class DiffractionGenerator(object):
         return upsampled, dx2
 
     @classmethod
-    def freeSpacePropagation(cls, bf_image, z = 5e-4, lmbda = 405e-9,
+    def freeSpaceTransfer(cls, bf_image, z = 5e-4, lmbda = 405e-9,
                              delta=2.2e-6, upsample=2, pad_width=0):
+        if type(bf_image) is not np.ndarray:
+            recon = np.array(bf_image)
+        else:
+            recon = bf_image
+        if upsample > 1:
+            recon, delta = DiffractionGenerator.upsampling(recon, delta, upsample)
+        recon = np.pad(recon, pad_width=pad_width, mode='edge')
+        k = 2 * np.pi / lmbda
+        Nx, Ny = np.shape(recon)
+        dfx = 1 / (Nx * delta)
+        dfy = 1 / (Ny * delta)
+        fx, fy = np.meshgrid(np.arange(-Ny / 2, Ny / 2, 1) * dfy,
+                                 np.arange(-Nx / 2, Nx / 2, 1) * dfx)
+        # forward propagate img => hologram, non-cascaded (Kreis 2002)
+        Gfp = np.exp((-1j * k * z) * np.sqrt(1 - lmbda ** 2 * fx ** 2 - lmbda ** 2 * fy ** 2))
+        return Gfp
+
+
+    @classmethod
+    def freeSpacePropagation(cls, bf_image, z = 5e-4, lmbda = 405e-9,
+                             delta=2.2e-6, upsample=2, pad_width=0, Gfp=None):
         ft2 = DiffractionGenerator.ft2
         ift2 = DiffractionGenerator.ift2
         if type(bf_image) is not np.ndarray:
@@ -58,14 +79,17 @@ class DiffractionGenerator(object):
 
         recon = np.pad(recon, pad_width=pad_width, mode='edge')
         #scipy.misc.imsave('../../data/ds-simulated/00000-0-PAD.png', recon)
+
         k = 2 * np.pi / lmbda
         Nx, Ny = np.shape(recon)
         dfx = 1 / (Nx * delta)
         dfy = 1 / (Ny * delta)
-        fx, fy = np.meshgrid(np.arange(-Ny / 2, Ny / 2, 1) * dfy,
-                             np.arange(-Nx / 2, Nx / 2, 1) * dfx)
-        # forward propagate img => hologram, non-cascaded (Kreis 2002)
-        Gfp = np.exp((-1j * k * z) * np.sqrt(1 - lmbda ** 2 * fx ** 2 - lmbda ** 2 * fy ** 2))
+
+        if Gfp is None:
+            fx, fy = np.meshgrid(np.arange(-Ny / 2, Ny / 2, 1) * dfy,
+                                 np.arange(-Nx / 2, Nx / 2, 1) * dfx)
+            # forward propagate img => hologram, non-cascaded (Kreis 2002)
+            Gfp = np.exp((-1j * k * z) * np.sqrt(1 - lmbda ** 2 * fx ** 2 - lmbda ** 2 * fy ** 2))
         R = ft2(recon, delta)
         Output = ift2(np.multiply(R, Gfp), dfx, dfy)
         return Output
@@ -292,27 +316,40 @@ class DiffractionGenerator(object):
 
 
     @classmethod
-    def diffractMNIST(cls, set_name='mnist-diffraction'):
+    def diffractMNIST(cls, set_name='mnist-diffraction', chop=False):
         from keras.datasets import mnist
 
         image_folder = Folders.data_folder() + set_name + '/'
         os.makedirs(image_folder, exist_ok=True)
 
         (train_data, train_labels), (test_data, test_labels) = mnist.load_data()
+
+        if chop:
+           for i in range(train_data.shape[0]):
+               if bool(random.getrandbits(1)):
+                   train_data[i, 0:14, :] = 0
+               else:
+                   train_data[i, 14:, :] = 0
+           for i in range(test_data.shape[0]):
+               if bool(random.getrandbits(1)):
+                   test_data[i, 0:14, :] = 0
+               else:
+                   test_data[i, 14:, :] = 0
+
         train_num = 3000
         test_num = 750
         data_train = np.zeros([train_num, 192, 192], dtype='float32', )
         labels_train = np.zeros([train_num, 192, 192], dtype='float32', )
         data_test = np.zeros([test_num, 192, 192], dtype='float32', )
         labels_test = np.zeros([test_num, 192, 192], dtype='float32', )
-
-        for t_idx in range(150,train_num): #, t in enumerate(train_data):
+        Gfp = None
+        for t_idx in range(train_num): #, t in enumerate(train_data):
             # mnist "data" is our "label"
             norm = (255. - train_data[t_idx]) / 255.
             upsampled = scipy.ndimage.zoom(norm, 3.0, order=3)
             upsampled = np.pad(upsampled, (192-upsampled.shape[0]) // 2, mode='edge')
             holo = np.abs(DiffractionGenerator.freeSpacePropagation(upsampled,
-                    z=2.5e-3, lmbda = 405e-9, upsample=2))
+                    z=2.5e-3, lmbda=405e-9, upsample=2, Gfp=None))
             holo = scipy.ndimage.zoom(holo, 0.251, order=3)
 
             data_train[t_idx] = holo
@@ -331,7 +368,7 @@ class DiffractionGenerator(object):
             upsampled = scipy.ndimage.zoom(norm, 3.0, order=3)
             upsampled = np.pad(upsampled, (192-upsampled.shape[0]) // 2, mode='edge')
             holo = np.abs(DiffractionGenerator.freeSpacePropagation(upsampled,
-                    z=2.5e-3, lmbda = 405e-9, upsample=2))
+                    z=2.5e-3, lmbda=405e-9, upsample=2, Gfp=Gfp))
             holo = scipy.ndimage.zoom(holo, 0.251, order=3)
 
             data_test[t_idx] = holo
@@ -351,4 +388,5 @@ class DiffractionGenerator(object):
 
 
 if __name__ == "__main__":
-    DiffractionGenerator.diffractMNIST()
+    # DiffractionGenerator.diffractMNIST()
+    DiffractionGenerator.diffractMNIST(set_name='mnist-chopped', chop=True)

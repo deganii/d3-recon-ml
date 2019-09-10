@@ -84,18 +84,25 @@ from src.data.loader import DataLoader
 #             dataset='ds-text')
 # ssim = prediction('unet_6-3_mse_text-full', data, label_text, transpose=False)
 
-train_unet('mnist-metatest', dataset='mnist-diffraction', records=256,
-           num_layers=6, filter_size=3,
-           learn_rate=1e-4, conv_depth=32, epochs=12,
-           batch_size=16, activation=A.PReLU,
-           separate=False, advanced_activations=True,
-           last_activation='sigmoid', output_depth=1,
-           long_description='This is a simple/minimal test to ensure all \
-            callbacks are working')
+# train_unet('mnist-metatest', dataset='mnist-diffraction', records=256,
+#            num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=12,
+#            batch_size=16, activation=A.PReLU,
+#            separate=False, advanced_activations=True,
+#            last_activation='sigmoid', output_depth=1,
+#            long_description='This is a simple/minimal test to ensure all \
+#             callbacks are working')
 
 # data, label_text = DataLoader.load_testing(records=-1, separate = False,
 #             dataset='mnist-diffraction')
+# data, label_text = DataLoader.load_testing(records=-1, separate = False,
+#             dataset='mnist-chopped')
 # ssim = prediction('unet_6-3_mse_mnist-3750', data, label_text, transpose=False)
+
+data, label = DataLoader.load_training(records=-1, separate = False,
+            dataset='hangul_5')
+ssim = prediction('unet_6-3_mse_mnist-3750', data, label, transpose=False)
+
 
 
 # TODO: Create a simple folder that can be uploaded to the "Experiments" dropbox

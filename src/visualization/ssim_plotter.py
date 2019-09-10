@@ -50,6 +50,10 @@ class SSIMPlotter(object):
 
     @classmethod
     def save_plot(cls, model_name, ssim, fit_type='skew', mp_folder=None):
+        # clean up any bogus values...
+        ssim = np.nan_to_num(ssim, 0)
+        ssim = np.clip(ssim, 0.0, 1.0)
+
         # plot and save to disk
         if mp_folder is None:
             mp_folder = Folders.predictions_folder() + model_name + '-n{0}/ssim'.format(ssim.shape[0])
@@ -115,6 +119,7 @@ class SSIMPlotter(object):
         plt.savefig(svg_path, format='svg')
         plt.savefig(png_path, format='png')
         plt.close(fig)
+        return svg_path
 
 
 if __name__ == "__main__":
