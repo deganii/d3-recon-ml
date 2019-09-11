@@ -1,5 +1,4 @@
 import os
-
 from sys import platform
 
 
@@ -12,8 +11,7 @@ class Folders(object):
         if platform == "win32":
             # keep data on separate drive
             return 'f:/d3-recon-ml/{0}/'
-        return '../../{0}/'
-
+        return '../{0}/'
 
     @classmethod
     def get_folder(cls, name):
