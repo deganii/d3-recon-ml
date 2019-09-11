@@ -99,9 +99,18 @@ from src.data.loader import DataLoader
 #             dataset='mnist-chopped')
 # ssim = prediction('unet_6-3_mse_mnist-3750', data, label_text, transpose=False)
 
-data, label = DataLoader.load_training(records=-1, separate = False,
-            dataset='hangul_5')
-ssim = prediction('unet_6-3_mse_mnist-3750', data, label, transpose=False)
+# data, label = DataLoader.load_training(records=-1, separate = False,
+#             dataset='hangul_1')
+# ssim = prediction('unet_6-3_mse_mnist-3750', data, label, transpose=False)
+
+train_unet('hangul_5', dataset='hangul_5', records=-1,
+           num_layers=6, filter_size=3,
+           learn_rate=1e-4, conv_depth=32, epochs=15,
+           batch_size=16, activation=A.PReLU,
+           separate=False, advanced_activations=True,
+           last_activation='sigmoid', output_depth=1,
+           long_description='Training a model directly on hangul dataset')
+
 
 
 

@@ -10,7 +10,7 @@ import scipy
 
 class HangulGenerator(object):
     @classmethod
-    def generate_hangul_dataset(cls, raw_hgu1_path, set_name='hangul'):
+    def generate_hangul_dataset(cls, raw_hgu1_path, set_name='hangul', images_per_char=5):
         image_folder = Folders.data_folder() + set_name + '/'
         os.makedirs(image_folder, exist_ok=True)
 
@@ -18,7 +18,7 @@ class HangulGenerator(object):
         data, labels, idx  = [], [], 0
         Gfp = None
         for f in hgu1_files:
-            hgu1_arr, origin_id = HangulGenerator.read_hgu1(f, max_images=5)
+            hgu1_arr, origin_id = HangulGenerator.read_hgu1(f, max_images=images_per_char)
             hgu1_arr = hgu1_arr.astype(np.float16) / 255.
             holo_arr = np.empty_like(hgu1_arr)
 
@@ -40,7 +40,7 @@ class HangulGenerator(object):
                 if idx % 100 == 0:
                     print("train: {0}\n".format(t_idx))
                 idx += 1
-            data.append(hgu1_arr)
+            data.append(holo_arr)
             labels.append(hgu1_arr)
 
         np.savez(os.path.join(Folders.data_folder(), set_name + '-all.npz'),
@@ -96,4 +96,6 @@ if __name__ == "__main__":
     #                         'F:\\d3-recon-ml\\data\\HangulDB-master\\extract_test\\')
     # print(h_array.shape)
     # HangulGenerator.generate_hangul_dataset("F:/d3-recon-ml/data/HangulDB-master/tiny_test/", set_name='hangul_tiny')
-    HangulGenerator.generate_hangul_dataset("F:/d3-recon-ml/data/HangulDB-master/HanDB_train/", set_name='hangul_5')
+    HangulGenerator.generate_hangul_dataset(
+        "F:/d3-recon-ml/data/HangulDB-master/HanDB_train/",
+        set_name='hangul_5', images_per_char=5)
