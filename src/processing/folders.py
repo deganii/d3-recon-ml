@@ -1,12 +1,19 @@
 import os
 
+from sys import platform
+
+
+
 class Folders(object):
 
     @classmethod
     def get_base_folder(cls):
-        # return '../../{0}/'
-        # keep data on separate drive
-        return 'f:/d3-recon-ml/{0}/'
+        # on local windows box (with AMD GPU) use keras plaidml backend...
+        if platform == "win32":
+            # keep data on separate drive
+            return 'f:/d3-recon-ml/{0}/'
+        return '../../{0}/'
+
 
     @classmethod
     def get_folder(cls, name):
