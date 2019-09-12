@@ -14,6 +14,7 @@ if platform == "win32":
 import keras.layers.advanced_activations as A
 
 from src.processing.train import train_unet
+from src.processing.train import train_holo_net
 from src.loss.avg import mse_dssim_loss
 from src.processing.predict import prediction
 from src.processing.predict import prediction_with_merge
@@ -111,14 +112,19 @@ from src.data.loader import DataLoader
 #            last_activation='sigmoid', output_depth=1,
 #            long_description='Training a model directly on hangul dataset')
 
-data, label = DataLoader.load_training(records=-1, separate = False,
-            dataset='mnist-diffraction')
-ssim = prediction('hangul_5', data, label, transpose=False,
-        long_description='Predict full training set of MNIST holograms (mnist-diffraction) using hangul_5 model')
+# data, label = DataLoader.load_training(records=-1, separate = False,
+#             dataset='mnist-diffraction')
+# ssim = prediction('hangul_5', data, label, transpose=False,
+#         long_description='Predict full training set of MNIST holograms (mnist-diffraction) using hangul_5 model')
+
+train_holo_net('hangul_5', dataset='hangul_5', records=-1,
+            filter_size=3, learn_rate=1e-4, conv_depth=32, epochs=15,
+           batch_size=16, activation='sigmoid',
+           output_depth=1, long_description='1st-pass training of holonet single filter')
 
 
 
-# TODO: Add metadata t
+# TODO: Add metadata to predictions folder
 # TODO: Create a simple folder that can be uploaded to the "Experiments" dropbox
 # DONE: Add platform and GPU to the model metadata file
 # TODO: Test AWS vs. local GPU performance
