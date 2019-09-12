@@ -1,6 +1,6 @@
 import keras.models
 import keras.losses
-import scipy.misc
+import imageio
 import numpy as np
 import skimage.measure
 import os
@@ -25,7 +25,7 @@ from tqdm import tqdm
 from libtiff import TIFF
 
 import gc
-
+import imageio
 
 # from keras.utils.generic_utils import get_custom_objects
 #
@@ -49,7 +49,7 @@ def format_and_save(img_array, output_file, dmin=None, dmax=None, transpose=True
     else:
         img = Image.fromarray(np.uint8(255.0 * img_array))
     #print('Norm: {0}, Max: {1}\n'.format(dmin, dmax))
-    scipy.misc.imsave(output_file, img)
+    imageio.imwrite(output_file, img)
     return img
 
 def format_and_save_phase(img_array, output_file):
@@ -340,10 +340,10 @@ def debug_save_images(output_folder, input_name, w_patches, patches, img_pass=-1
     # for idx, w_patch, patch in enumerate(zip(w_patches, patches)):
     for i in range(w_patches.shape[0]):
         for j in range(w_patches.shape[1]):
-            scipy.misc.imsave(os.path.join(debug_dir,
+            imageio.imwrite(os.path.join(debug_dir,
                 "{0}_patch_{1}-{2}_w{3}.png".format(input_name, i, j,
                     img_pass if img_pass > 0 else '')), w_patches[i, j])
-            scipy.misc.imsave(os.path.join(debug_dir,
+            imageio.imwrite(os.path.join(debug_dir,
                 "{0}_patch_{1}-{2}{3}.png".format(input_name, i, j,
                     img_pass if img_pass > 0 else '')), patches[i, j])
             w_patches[i, j,0] = 1.0
@@ -386,7 +386,7 @@ def prediction_with_merge(model_name, input_folder, output_folder, window_size=1
         prd = prd[:input_img.shape[0], :input_img.shape[1]]
 
         # write out the prediction
-        scipy.misc.imsave(os.path.join(output_folder, input_name +".pred.png"), prd)
+        imageio.imwrite(os.path.join(output_folder, input_name +".pred.png"), prd)
     return w_patches, padded_results
 
 

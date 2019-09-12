@@ -16,7 +16,7 @@ from PIL import ImageDraw
 
 from keras import backend as K
 
-import scipy.misc
+import imageio
 
 class ImageEvolution(object):
 
@@ -63,8 +63,8 @@ class ImageEvolution(object):
             label = ImageEvolution.format_and_return(labels[idx])
 
             ImageEvolution.saveTiledImages(epoch_ev[:, idx, ...], '{0:05}_'.format(idx) + model_name, n_columns=n_columns)
-            scipy.misc.imsave(Folders.figures_folder() + '{0:05}_'.format(idx) + model_name + '_evolution_data.png', img)
-            scipy.misc.imsave(Folders.figures_folder() + '{0:05}_'.format(idx) + model_name + '_evolution_label.png', label)
+            imageio.imwrite(Folders.figures_folder() + '{0:05}_'.format(idx) + model_name + '_evolution_data.png', img)
+            imageio.imwrite(Folders.figures_folder() + '{0:05}_'.format(idx) + model_name + '_evolution_label.png', label)
 
     @classmethod
     def save_plot(cls, model_name, title=''):

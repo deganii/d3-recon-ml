@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 import scipy
 from PIL import Image
-from scipy import misc
+import imageio
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -20,8 +20,9 @@ import cmocean.cm
 
 import scipy
 import scipy.io
-import scipy.misc
 import scipy.ndimage
+import imageio
+
 
 class BrCaGenerator(object):
     @classmethod
@@ -76,8 +77,8 @@ class BrCaGenerator(object):
                 phasDestFilename = '{0:05}-P.png'.format(i)
 
                 # save hologram and magnitude
-                scipy.misc.imsave(os.path.join(split_name, holoDestFilename), np.squeeze(holo[i]))
-                scipy.misc.imsave(os.path.join(split_name, magnDestFilename), np.squeeze(mag[i]))
+                imageio.imwrite(os.path.join(split_name, holoDestFilename), np.squeeze(holo[i]))
+                imageio.imwrite(os.path.join(split_name, magnDestFilename), np.squeeze(mag[i]))
                 # save phase
                 plt.imsave(os.path.join(split_name, phasDestFilename), np.squeeze(phase[i]),
                            cmap=cmocean.cm.phase, vmin=-np.pi, vmax=np.pi)
@@ -125,7 +126,7 @@ class BrCaGenerator(object):
             subNormAmp = subNormAmp.astype(np.float32)
             viewHologram = Image.fromarray(np.transpose(np.uint8(255.0 * subNormAmp / np.max(subNormAmp))))
 
-            # scipy.misc.imsave('./test_viewhologram.png', viewHologram)
+            # imageio.imwrite('./test_viewhologram.png', viewHologram)
 
             # convert from matlab tuples to a proper np array
             #recon = np.asarray([[[num for num in row] for row in rows] for rows in reconImage])
@@ -138,8 +139,8 @@ class BrCaGenerator(object):
             viewReconReal = Image.fromarray(np.transpose(np.uint8(255.0 * (viewReconReal) / np.max(viewReconReal))))
             viewReconImag = Image.fromarray(np.transpose(np.uint8(255.0 * (viewReconImag) / np.max(viewReconImag))))
 
-            # scipy.misc.imsave('./test_viewreconReal.png', viewReconReal)
-            # scipy.misc.imsave('./test_viewreconImag.png', viewReconImag)
+            # imageio.imwrite('./test_viewreconReal.png', viewReconReal)
+            # imageio.imwrite('./test_viewreconImag.png', viewReconImag)
 
             M = subNormAmp.shape[0]
             N = subNormAmp.shape[1]
@@ -188,9 +189,9 @@ class BrCaGenerator(object):
                         realDestFilename = '{0:05}-R-{1}-{2}.png'.format(seq,transformation,input_title)
                         imagDestFilename = '{0:05}-I-{1}-{2}.png'.format(seq,transformation,input_title)
 
-                        scipy.misc.imsave(os.path.join(image_folder, holoDestFilename), holoTile)
-                        scipy.misc.imsave(os.path.join(image_folder, realDestFilename), realTile)
-                        scipy.misc.imsave(os.path.join(image_folder, imagDestFilename), imageTile)
+                        imageio.imwrite(os.path.join(image_folder, holoDestFilename), holoTile)
+                        imageio.imwrite(os.path.join(image_folder, realDestFilename), realTile)
+                        imageio.imwrite(os.path.join(image_folder, imagDestFilename), imageTile)
 
                         # append the raw data to the
                         data[seq, :] = np.rot90(subNormAmp[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)

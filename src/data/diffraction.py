@@ -14,7 +14,8 @@ import string
 import numpy as np
 import os
 import ntpath
-from scipy import misc
+import imageio
+import imageio
 import glob
 
 from src.processing.folders import Folders
@@ -75,10 +76,10 @@ class DiffractionGenerator(object):
 
         if upsample > 1:
             recon, delta = DiffractionGenerator.upsampling(recon, delta, upsample)
-            #scipy.misc.imsave('../../data/ds-simulated/00000-0-US.png', recon)
+            #imageio.imwrite('../../data/ds-simulated/00000-0-US.png', recon)
 
         recon = np.pad(recon, pad_width=pad_width, mode='edge')
-        #scipy.misc.imsave('../../data/ds-simulated/00000-0-PAD.png', recon)
+        #imageio.imwrite('../../data/ds-simulated/00000-0-PAD.png', recon)
 
         k = 2 * np.pi / lmbda
         Nx, Ny = np.shape(recon)
@@ -124,8 +125,8 @@ class DiffractionGenerator(object):
                 upsample=upsample, z=z, lmbda=lmbda))
         # cropx, cropy = int(w/upsample), int(h/upsample)
         # holo = holo[cropx:-cropx, cropy:-cropy]
-        # scipy.misc.imsave('holo.png', holo)
-        # scipy.misc.imsave('label.png', np.abs(recon))
+        # imageio.imwrite('holo.png', holo)
+        # imageio.imwrite('label.png', np.abs(recon))
         return holo, recon
 
     @classmethod
@@ -162,8 +163,8 @@ class DiffractionGenerator(object):
             magnDestFilename = '{0:05}-M-{1}.png'.format(i,text)
 
             # save hologram and magnitude
-            scipy.misc.imsave(image_folder +  holoDestFilename, np.squeeze(holo))
-            scipy.misc.imsave(image_folder +  magnDestFilename, np.squeeze(recon))
+            imageio.imwrite(image_folder +  holoDestFilename, np.squeeze(holo))
+            imageio.imwrite(image_folder +  magnDestFilename, np.squeeze(recon))
 
         # partition and save
         test_count = int(np.floor(labels.shape[0] * 0.8))
@@ -240,8 +241,8 @@ class DiffractionGenerator(object):
         # propagate to a hologram
         holo = np.abs(DiffractionGenerator.freeSpacePropagation(recon, upsample=1, z=7e-4))
         # image.save('output.png')
-        scipy.misc.imsave('holo.png', np.abs(holo))
-        scipy.misc.imsave('label.png', np.abs(recon))
+        imageio.imwrite('holo.png', np.abs(holo))
+        imageio.imwrite('label.png', np.abs(recon))
 
         return holo, recon
         # return np.vstack([np.real(recon), np.imag(recon)])
@@ -357,8 +358,8 @@ class DiffractionGenerator(object):
             holoDestFilename = '{0:05}-H-{1}.png'.format(t_idx,train_labels[t_idx])
             magnDestFilename = '{0:05}-M-{1}.png'.format(t_idx,train_labels[t_idx])
             # save hologram and magnitude
-            scipy.misc.imsave(image_folder +  holoDestFilename, np.squeeze(holo))
-            scipy.misc.imsave(image_folder +  magnDestFilename, np.squeeze(upsampled))
+            imageio.imwrite(image_folder +  holoDestFilename, np.squeeze(holo))
+            imageio.imwrite(image_folder +  magnDestFilename, np.squeeze(upsampled))
             if t_idx % 100 == 0:
                 print("train: {0}\n".format(t_idx))
 
@@ -376,8 +377,8 @@ class DiffractionGenerator(object):
             holoDestFilename = '{0:05}-H-{1}.png'.format(train_num+t_idx,test_labels[t_idx])
             magnDestFilename = '{0:05}-M-{1}.png'.format(train_num+t_idx,test_labels[t_idx])
             # save hologram and magnitude
-            scipy.misc.imsave(image_folder +  holoDestFilename, np.squeeze(holo))
-            scipy.misc.imsave(image_folder +  magnDestFilename, np.squeeze(upsampled))
+            imageio.imwrite(image_folder +  holoDestFilename, np.squeeze(holo))
+            imageio.imwrite(image_folder +  magnDestFilename, np.squeeze(upsampled))
             if t_idx % 100 == 0:
                 print("test: {0}\n".format(t_idx))
 

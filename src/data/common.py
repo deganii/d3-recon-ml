@@ -2,10 +2,6 @@
 import os, glob
 import h5py
 import numpy as np
-import scipy
-from PIL import Image
-from scipy import misc
-
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from src.processing.folders import Folders

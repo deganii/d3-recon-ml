@@ -7,7 +7,7 @@ from src.processing.folders import Folders
 matplotlib.use('Agg')
 from PIL import Image
 from keras import backend as K
-import scipy.misc
+import imageio
 
 class ImageEvolution(object):
 
@@ -44,8 +44,8 @@ class ImageEvolution(object):
         label = ImageEvolution.format_and_return(labels[idx], transpose=transpose)
 
         ImageEvolution.saveTiledImages(epoch_ev, model_name + '_{0}'.format(idx), n_columns=n_columns)
-        scipy.misc.imsave(Folders.figures_folder() + model_name + '_evolution_data_{0}.png'.format(idx), img)
-        scipy.misc.imsave(Folders.figures_folder() + model_name + '_evolution_label_{0}.png'.format(idx), label)
+        imageio.imwrite(Folders.figures_folder() + model_name + '_evolution_data_{0}.png'.format(idx), img)
+        imageio.imwrite(Folders.figures_folder() + model_name + '_evolution_label_{0}.png'.format(idx), label)
 
     @classmethod
     def save_plot(cls, model_name, title='', transpose=True):
