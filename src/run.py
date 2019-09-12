@@ -111,14 +111,14 @@ from src.data.loader import DataLoader
 #            last_activation='sigmoid', output_depth=1,
 #            long_description='Training a model directly on hangul dataset')
 
-data, label = DataLoader.load_testing(records=256, separate = False,
+data, label = DataLoader.load_training(records=-1, separate = False,
             dataset='mnist-diffraction')
 ssim = prediction('hangul_5', data, label, transpose=False,
-        long_description='Predict MNIST holograms using hangul_5 model')
+        long_description='Predict full training set of MNIST holograms (mnist-diffraction) using hangul_5 model')
 
 
 
-
+# TODO: Add metadata t
 # TODO: Create a simple folder that can be uploaded to the "Experiments" dropbox
 # DONE: Add platform and GPU to the model metadata file
 # TODO: Test AWS vs. local GPU performance
