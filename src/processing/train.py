@@ -199,7 +199,7 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
 def train_holo_net(descriptive_name, dataset='ds-lymphoma',
                filter_size=32, conv_depth=1,
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
-               separate=True,  batch_size=32, activation: object='relu',
+               separate=False,  batch_size=32, activation: object='relu',
                output_depth=1, save_best_only=True, long_description=''):
 
     # gather up the params
