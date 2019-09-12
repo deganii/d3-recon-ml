@@ -118,7 +118,7 @@ from src.data.loader import DataLoader
 #         long_description='Predict full training set of MNIST holograms (mnist-diffraction) using hangul_5 model')
 
 train_holo_net('hangul_5', dataset='hangul_5', records=-1,
-            filter_size=3, learn_rate=1e-4, conv_depth=32, epochs=15,
+            filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=15,
            batch_size=16, activation='sigmoid',
            output_depth=1, long_description='1st-pass training of holonet single filter')
 
