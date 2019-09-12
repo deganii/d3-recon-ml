@@ -12,6 +12,7 @@ from keras.layers import Activation
 from src.data.loader import DataLoader
 from keras.optimizers import Adam
 from src.arch.unet import get_unet
+from src.arch.holo_transfer import get_holo_transfer
 from src.arch.dcgan import DCGAN, DCGAN_discriminator
 from keras.callbacks import ModelCheckpoint, CSVLogger, TensorBoard
 import keras.backend as K
@@ -194,6 +195,37 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
             train_label, epochs, model_metadata=metadata, batch_size=batch_size,
                 save_best_only=save_best_only, test_data=test_data, test_labels=test_label)
         return model_name, epoch, train_loss, val_loss
+
+def train_holo_net(descriptive_name, dataset='ds-lymphoma',
+               filter_size=32, conv_depth=1,
+               learn_rate=1e-4, epochs=18, loss='mse', records=-1,
+               separate=True,  batch_size=32, activation: object='relu',
+               output_depth=1, save_best_only=True, long_description=''):
+
+    # gather up the params
+    metadata = extract_metadata(inspect.currentframe())
+
+    # Step 1: load data
+    d_raw = DataLoader.load_training(dataset=dataset, records=records, separate=separate)
+    d_test_raw = DataLoader.load_testing(dataset=dataset, records=records, separate=separate)
+
+    # Step 2: Configure architecture
+    # Step 3: Configure Training Parameters and Train
+
+    train_data, train_label = d_raw
+    test_data, test_label = d_test_raw
+    img_rows, img_cols = train_data.shape[1], train_data.shape[2]
+
+    model = get_holo_transfer(img_rows, img_cols, filter_size=filter_size,
+                     conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
+                     output_depth=output_depth, activation=activation)
+    model_name = descriptive_name
+    epoch, train_loss, val_loss = train(model_name, model, train_data,
+        train_label, epochs, model_metadata=metadata, batch_size=batch_size,
+            save_best_only=save_best_only, test_data=test_data, test_labels=test_label)
+    return model_name, epoch, train_loss, val_loss
+
+
 
 # train a single unet on a small dataset
 #train_unet('small-dataset-test', 6, 3, learn_rate=1e-4, epochs=2, records=64)

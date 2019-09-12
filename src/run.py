@@ -103,13 +103,18 @@ from src.data.loader import DataLoader
 #             dataset='hangul_1')
 # ssim = prediction('unet_6-3_mse_mnist-3750', data, label, transpose=False)
 
-train_unet('hangul_5', dataset='hangul_5', records=-1,
-           num_layers=6, filter_size=3,
-           learn_rate=1e-4, conv_depth=32, epochs=15,
-           batch_size=16, activation=A.PReLU,
-           separate=False, advanced_activations=True,
-           last_activation='sigmoid', output_depth=1,
-           long_description='Training a model directly on hangul dataset')
+# train_unet('hangul_5', dataset='hangul_5', records=-1,
+#            num_layers=6, filter_size=3,
+#            learn_rate=1e-4, conv_depth=32, epochs=15,
+#            batch_size=16, activation=A.PReLU,
+#            separate=False, advanced_activations=True,
+#            last_activation='sigmoid', output_depth=1,
+#            long_description='Training a model directly on hangul dataset')
+
+data, label = DataLoader.load_testing(records=256, separate = False,
+            dataset='mnist-diffraction')
+ssim = prediction('hangul_5', data, label, transpose=False,
+        long_description='Predict MNIST holograms using hangul_5 model')
 
 
 

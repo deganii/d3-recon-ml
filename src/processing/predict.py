@@ -65,18 +65,25 @@ def update_saved_lists(i, img, best, best_list, worst, worst_list, tiled_imgs, t
         worst_list.append(img)
 
 def prediction(model_name, data, labels, save_err_img = False,
-               phase_mapping=False, weights_file='weights.h5',
+               prediction_name=None, phase_mapping=False,
+               weights_file='weights.h5', long_description=None,
                transpose=True, model=None, mp_folder=None,
                save_n=-1, zip_images=False, tiled_list=None):
 
     if model is None:
         model = keras.models.load_model(Folders.models_folder() + model_name + '/' + weights_file)
     if mp_folder is None:
-        mp_folder = Folders.predictions_folder() + model_name + '-n{0}/'.format(data.shape[0])
+        if prediction_name is None:
+            prediction_name = model_name + '-n{0}/'.format(data.shape[0])
+        mp_folder = Folders.predictions_folder() + prediction_name
     mp_images_folder = mp_folder + 'images/'
 
     os.makedirs(mp_folder, exist_ok=True)
     os.makedirs(mp_images_folder, exist_ok=True)
+
+    if long_description is not None:
+        with open(mp_folder+"desc.txt", "w") as text_file:
+            text_file.write(long_description)
 
     predictions = model.predict(data, batch_size=32, verbose=0)
 
@@ -94,6 +101,9 @@ def prediction(model_name, data, labels, save_err_img = False,
     # update for phase flattening
     complex_valued = predictions.shape[-1] == 2
 
+    if save_n < 0 or save_n > predictions.shape[0]:
+        save_n = predictions.shape[0]
+
     if complex_valued:
         ssim = np.empty([predictions.shape[0], predictions.shape[-1]])
         ms_err = np.empty([predictions.shape[0], predictions.shape[-1]])
@@ -103,8 +113,7 @@ def prediction(model_name, data, labels, save_err_img = False,
         ssim = np.empty([predictions.shape[0]])
         ms_err = np.empty([predictions.shape[0]])
 
-    if save_n < 0 or save_n > predictions.shape[0]:
-        save_n = predictions.shape[0]
+
 
     best, worst = np.argmax(ssim), np.argmin(ssim)
     save_list = list(range(save_n))
