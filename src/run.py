@@ -117,13 +117,13 @@ from src.data.loader import DataLoader
 # ssim = prediction('hangul_5', data, label, transpose=False,
 #         long_description='Predict full training set of MNIST holograms (mnist-diffraction) using hangul_5 model')
 
-train_holo_net('hangul_5', dataset='hangul_5', records=-1,
-            filter_size=3, learn_rate=1e-4, conv_depth=1, epochs=15,
+train_holo_net('holo_net_32_1', dataset='hangul_5', records=-1,
+            filter_size=32, learn_rate=1e-4, conv_depth=1, epochs=16,
            batch_size=16, activation='sigmoid',
-           output_depth=1, long_description='1st-pass training of holonet single filter')
+           output_depth=1, long_description='1st-pass training of holonet single 32x32 filter')
 
 
-
+# Only fit SSIM Histogram on last epoch, otherwise use normal/skew distribution...
 # TODO: Add metadata to predictions folder
 # TODO: Create a simple folder that can be uploaded to the "Experiments" dropbox
 # DONE: Add platform and GPU to the model metadata file

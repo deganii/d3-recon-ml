@@ -225,7 +225,7 @@ def prediction(model_name, data, labels, save_err_img = False,
 
     np.savetxt(mp_folder + 'stats.txt', indexed_ssim_mse, header=header, fmt="%i %10.5f %10.5f")
     np.savez(mp_folder + 'stats.npz', indexed_ssim_mse)
-    svg_path = SSIMPlotter.save_plot(model_name, ssim, mp_folder=mp_folder, fit_type='best')
+    svg_path = SSIMPlotter.save_plot(model_name, ssim, mp_folder=mp_folder, fit_type='skew')
     return ssim, svg_path, tiled_imgs, best_imgs, worst_imgs
 
 
