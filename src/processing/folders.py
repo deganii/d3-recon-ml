@@ -10,7 +10,7 @@ class Folders(object):
         # on local windows box (with AMD GPU) use keras plaidml backend...
         if platform == "win32":
             # keep data on separate drive
-            return 'f:/d3-recon-ml/{0}/'
+            return 'd:/d3-recon-ml/{0}/'
         return '../{0}/'
 
     @classmethod

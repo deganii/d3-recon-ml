@@ -5,8 +5,8 @@ import scipy.sparse.linalg
 from sys import platform
 
 # on windows box (with AMD GPU) use keras plaidml backend...
-if platform == "win32":
-    os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+# if platform == "win32":
+#     os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
     # import plaidml.keras
     # plaidml.keras.install_backend()
 
