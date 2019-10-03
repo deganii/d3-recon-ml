@@ -114,11 +114,11 @@ def prediction(model_name, data, labels, save_err_img = False,
         ms_err = np.empty([predictions.shape[0]])
 
 
-
     best, worst = np.argmax(ssim), np.argmin(ssim)
     save_list = list(range(save_n))
-    save_list.append(best)
-    save_list.append(worst)
+    if save_n < best or save_n < worst:
+        save_list.append(best)
+        save_list.append(worst)
 
     if tiled_list is None:
         tiled_list = [0, 1, 2]
@@ -126,10 +126,12 @@ def prediction(model_name, data, labels, save_err_img = False,
     best_imgs = []
     worst_imgs = []
 
-    for i in save_list:
+    for i in range(predictions.shape[0]):
         file_prefix = mp_images_folder + '{0:05}-'.format(i)
-        input_img = format_and_save(data[i], file_prefix + 'input.png', transpose=transpose)
-        update_saved_lists(i,input_img,best,best_imgs,worst,worst_imgs,tiled_imgs,tiled_list)
+
+        if i < save_n or i == best or i == worst:
+            input_img = format_and_save(data[i], file_prefix + 'input.png', transpose=transpose)
+            update_saved_lists(i,input_img,best,best_imgs,worst,worst_imgs,tiled_imgs,tiled_list)
 
 
         # calculate the structural similarity index (SSIM) between prediction and source
@@ -144,13 +146,13 @@ def prediction(model_name, data, labels, save_err_img = False,
                                        np.min(labels[i, ..., j])))
                 dmax = max(np.max(predictions[i, ..., j]),
                         np.max(labels[i, ..., j]))
-
-                pred = format_and_save(predictions[i, ..., j],
-                    file_prefix + 'pred-{0}.png'.format(name),
-                    dmin, dmax, transpose=transpose)
-                label = format_and_save(labels[i, ..., j],
-                    file_prefix + 'label-{0}.png'.format(name),
-                    dmin, dmax, transpose=transpose)
+                if i < save_n or i == best or i == worst:
+                    pred = format_and_save(predictions[i, ..., j],
+                        file_prefix + 'pred-{0}.png'.format(name),
+                        dmin, dmax, transpose=transpose)
+                    label = format_and_save(labels[i, ..., j],
+                        file_prefix + 'label-{0}.png'.format(name),
+                        dmin, dmax, transpose=transpose)
 
         else:
             ssim[i] = skimage.measure.compare_ssim(predictions[i], labels[i])
@@ -159,30 +161,35 @@ def prediction(model_name, data, labels, save_err_img = False,
 
             dmin = np.abs(min(np.min(predictions[i]), np.min(labels[i])))
             dmax = np.abs(max(np.max(predictions[i]), np.max(labels[i])))
-            pred=format_and_save(predictions[i], file_prefix + 'pred.png',
-                dmin, dmax, transpose = transpose)
-            label=format_and_save(labels[i], file_prefix + 'label.png',
-                dmin, dmax, transpose = transpose)
+            if i < save_n or i == best or i == worst:
+                pred=format_and_save(predictions[i], file_prefix + 'pred.png',
+                    dmin, dmax, transpose = transpose)
+                label=format_and_save(labels[i], file_prefix + 'label.png',
+                    dmin, dmax, transpose = transpose)
             if phase_mapping:
                 # mean phase error accounting for loop-over
                 ms_err[i] = np.mean(np.abs(np.exp(1j * predictions[i]) -  np.exp(1j * labels[i])))
-                pred = format_and_save_phase(predictions[i], file_prefix + 'pred.png')
-                label = format_and_save_phase(labels[i], file_prefix + 'label.png')
+                if i < save_n or i == best or i == worst:
+                    pred = format_and_save_phase(predictions[i], file_prefix + 'pred.png')
+                    label = format_and_save_phase(labels[i], file_prefix + 'label.png')
             else:
                 ms_err[i] = np.mean(sq_err)
-                pred = format_and_save(predictions[i], file_prefix + 'pred.png',
-                    dmin, dmax, transpose=transpose)
-                label = format_and_save(labels[i], file_prefix + 'label.png',
-                    dmin, dmax, transpose=transpose)
+                if i < save_n or i == best or i == worst:
+                    pred = format_and_save(predictions[i], file_prefix + 'pred.png',
+                        dmin, dmax, transpose=transpose)
+                    label = format_and_save(labels[i], file_prefix + 'label.png',
+                        dmin, dmax, transpose=transpose)
 
             if save_err_img:
                 smin, smax = np.min(sq_err), np.max(sq_err)
-                err = format_and_save(sq_err, file_prefix + 'err.png',
-                    smin, smax, transpose=transpose)
-                update_saved_lists(i, err, best, best_imgs, worst, worst_imgs, tiled_imgs, tiled_list)
+                if i < save_n or i == best or i == worst:
+                    err = format_and_save(sq_err, file_prefix + 'err.png',
+                        smin, smax, transpose=transpose)
+                    update_saved_lists(i, err, best, best_imgs, worst, worst_imgs, tiled_imgs, tiled_list)
 
-        update_saved_lists(i,pred,best,best_imgs,worst,worst_imgs,tiled_imgs,tiled_list)
-        update_saved_lists(i, label, best, best_imgs, worst, worst_imgs, tiled_imgs, tiled_list)
+        if i < save_n or i == best or i == worst:
+            update_saved_lists(i,pred,best,best_imgs,worst,worst_imgs,tiled_imgs,tiled_list)
+            update_saved_lists(i, label, best, best_imgs, worst, worst_imgs, tiled_imgs, tiled_list)
 
     if zip_images:
         with zipfile.ZipFile(mp_folder+'images.zip', "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -194,7 +201,7 @@ def prediction(model_name, data, labels, save_err_img = False,
 
     # calculate and save statistics over SSIM
     header = 'Structural Similarity Indices for {0}\n'.format(model_name)
-    header = 'Phase Mapping: {0}\n'.format(phase_mapping)
+    header += 'Phase Mapping: {0}\n'.format(phase_mapping)
     header += 'N:     {0}\n'.format(ssim.shape[0])
 
     if complex_valued:

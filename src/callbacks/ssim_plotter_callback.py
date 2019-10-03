@@ -11,7 +11,7 @@ from svgutils.transform import FigureElement, XLINK, SVG
 from lxml import etree
 import base64
 from io import BytesIO, StringIO
-
+from src.callbacks.model_callback import ModelCallback
 
 class PILElement(FigureElement):
     """Inline PIL image element.
@@ -38,12 +38,10 @@ class PILElement(FigureElement):
 
 
 
-class SSIMPlotterCallback(Callback):
+class SSIMPlotterCallback(ModelCallback):
 
     def __init__(self, model_name, experiment_id, test_data, test_labels):
-        super(SSIMPlotterCallback, self).__init__()
-        self.model_name = model_name
-        self.experiment_id = experiment_id
+        super(SSIMPlotterCallback, self).__init__(model_name, experiment_id)
         self.test_data = test_data
         self.test_labels = test_labels
 
@@ -82,29 +80,27 @@ class SSIMPlotterCallback(Callback):
 
         return buffer
 
-
     def on_epoch_end(self, epoch, logs=None):
         if self.test_data is None or self.test_labels is None:
             return
 
         # run for first 5 epochs where results are dramatic
         # and then only do every 5th epoch
-        if epoch < 5 or epoch % 5 == 0:
-            mp_folder = Folders.experiments_folder() + \
-                        '{0}/Epoch_{1:04}/'. format(
-                            self.experiment_id, epoch)
+        if self.should_save():
+            exp_folder = self.get_current_epoch_folder()
+
             # save an ssim plot on test set for this epoch
             err_img = False
             ssim, ssim_svg_path, tiled_imgs, best_imgs, worst_imgs = prediction(
                 self.model_name, self.test_data,
                 self.test_labels, transpose=False,
-                model=self.model, mp_folder=mp_folder,
+                model=self.model, mp_folder=exp_folder,
                 save_n=100, zip_images=True, save_err_img=err_img)
 
             n_columns = 3 if not err_img else 4
             # make a coherent summary from the available information
             tiled_img = self.tileImages(tiled_imgs,n_columns=n_columns)
-            tiled_img.save(mp_folder+'tiled.png', format="PNG")
+            tiled_img.save(exp_folder+'tiled.png', format="PNG")
             best_img = self.tileImages(best_imgs, n_columns=n_columns)
             worst_img = self.tileImages(worst_imgs, n_columns=n_columns)
 
@@ -119,5 +115,5 @@ class SSIMPlotterCallback(Callback):
             tile_obj.moveto(10, 200)
 
             fig.append([plot1, tile_obj])
-            fig.save(mp_folder + 'composite.svg')
+            fig.save(exp_folder + 'composite.svg')
 

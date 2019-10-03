@@ -49,7 +49,8 @@ class SSIMPlotter(object):
                sorted(fit_map.items(), key=lambda e: e[1][0])
 
     @classmethod
-    def save_plot(cls, model_name, ssim, fit_type='skew', mp_folder=None):
+    def save_plot(cls, model_name, ssim, fit_type='skew',
+                  mp_folder=None, dpi=1200, return_pil_img=False):
         # clean up any bogus values...
         ssim = np.nan_to_num(ssim, 0)
         ssim = np.clip(ssim, 0.0, 1.0)
@@ -105,9 +106,10 @@ class SSIMPlotter(object):
                     fit_file.write('DIST: {0:15.15} | SSE: {1:10.4f} | PARAMS: {2}\n'.
                                    format(fit_item[0], fit_item[1][0], fit_item[1][1]))
 
-        title += '{0}: $\mu={1:.2f},\ \sigma={2:.3f}$'.format(dist.name, loc, scale)
+        # title += '{0}: $\mu={1:.2f},\ \sigma={2:.3f}$'.format(dist.name, loc, scale)
 
         plt.plot(bins, y, 'r--', linewidth=2)
+        plt.xlim(0.88, 1.0)
         fig.suptitle(title, fontsize=10, fontweight='bold')
         fig.subplots_adjust(left=0.17)
         fig.subplots_adjust(bottom=0.27)
@@ -116,10 +118,21 @@ class SSIMPlotter(object):
 
         fig.canvas.draw()
         plt.grid(True)
-        plt.savefig(svg_path, format='svg')
-        plt.savefig(png_path, format='png')
-        plt.close(fig)
-        return svg_path
+
+        import PIL
+        if return_pil_img:
+            canvas = plt.get_current_fig_manager().canvas
+            pil_img = PIL.Image.fromstring('RGB', canvas.get_width_height(),
+                 canvas.tostring_rgb())
+            plt.close()
+            return pil_img
+        else:
+            plt.savefig(svg_path, format='svg')
+            plt.savefig(png_path, format='png', dpi=dpi)
+            plt.close()
+            return svg_path
+
+
 
 
 if __name__ == "__main__":
