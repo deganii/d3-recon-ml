@@ -17,7 +17,6 @@ def get_holo_transfer(img_rows, img_cols, filter_size=32, conv_depth=1,
     inputs = Input((img_rows, img_cols, 1))
     conv = Conv2D(conv_depth, (filter_size, filter_size),
                   activation=activation, padding='same')(inputs)
-
     model = Model(inputs=[inputs], outputs=[conv])
     if metrics is None:
         metrics = ['accuracy'] #ImageComparator.ssim_metric]

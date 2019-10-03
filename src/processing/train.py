@@ -2,7 +2,7 @@ import os
 import sys
 import time
 
-
+from src.callbacks.holonet_callbacks import HoloNetCallback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
@@ -31,7 +31,8 @@ from src.callbacks.time_history_callback import TimeHistory
 from src.callbacks.ssim_plotter_callback import SSIMPlotterCallback
 from src.callbacks.model_to_experiment import ModelToExperiment
 def get_callbacks(model_name, experiment_id, batch_size = 32,
-                  save_best_only = True, test_data=None, test_labels=None):
+                  save_best_only = True,
+                  test_data=None, test_labels=None, holonet = False):
     models_folder = Folders.models_folder()
     experiments_folder = Folders.experiments_folder()
     os.makedirs(experiments_folder + experiment_id, exist_ok=True)
@@ -44,7 +45,7 @@ def get_callbacks(model_name, experiment_id, batch_size = 32,
                                        monitor='val_loss', save_best_only=save_best_only)
     csv_logger = CSVLogger(models_folder + "{0}/perflog.csv".format(model_name),
                                             separator=',', append=False)
-    fit_plotter = FitPlotterCallback(model_name)
+    fit_plotter = FitPlotterCallback(model_name, experiment_id)
     time_history = TimeHistory(model_name, experiment_id)
     ssim_plotter = SSIMPlotterCallback(model_name, experiment_id, test_data, test_labels)
     copycallback = ModelToExperiment(model_name, experiment_id)
@@ -56,26 +57,35 @@ def get_callbacks(model_name, experiment_id, batch_size = 32,
                               write_images=True, embeddings_freq=0,
                               embeddings_layer_names=None, embeddings_metadata=None)
         callbacks.append(tensorboard)
+    if holonet:
+        callbacks.append(HoloNetCallback(model_name, experiment_id))
+
     return callbacks
 
 
 def train(model_name, model, data, labels, epochs, save_summary=True,
           batch_size=32, save_best_only=True, model_metadata=None,
-          test_data=None, test_labels=None):
+          test_data=None, test_labels=None, holonet=False):
     """ Train a generic model and save relevant data """
     models_folder = Folders.models_folder()
     os.makedirs(models_folder + model_name, exist_ok=True)
     experiment_id = time.strftime("%Y%m%d-%H%M%S") + '_' + model_name
-
+    m_path = models_folder + model_name
+    # e_path = Folders.experiments_folder() + experiment_id
     if save_summary:
-        def summary_saver(s):
-            with open(models_folder + model_name + '/summary.txt', 'a+') as f:
-                print(s, file=f)
-        model.summary(print_fn=summary_saver)
+        def summary_saver(path):
+
+            def summary_save(s):
+                with open(path, 'a+') as f:
+                    print(s, file=f)
+            return summary_save
+        model.summary(print_fn=summary_saver(m_path+ '/model_summary.txt'))
+        # model.summary(print_fn=summary_saver(e_path+ '/model_summary.txt'))
 
     if model_metadata is not None:
         model_metadata['model_name'] = model_name
-        save_metadata(model_metadata)
+        save_metadata(m_path + '/metadata.csv', model_metadata)
+        # save_metadata(e_path + '/metadata.csv', model_metadata)
 
     # Step 2: train and save best weights for the given architecture
     print('-' * 30)
@@ -86,11 +96,12 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
         epochs=epochs, verbose=1, shuffle=True,
         validation_split=0.2, callbacks=get_callbacks(
             model_name, experiment_id, batch_size=batch_size,
-            save_best_only=save_best_only,
+            save_best_only=save_best_only, holonet=holonet,
             test_data=test_data, test_labels=test_labels))
 
     # Step 3: Plot the validation results of the model, and save the performance data
-    FitPlotter.save_plot(history.history, '{0}/train_validation'.format(model_name))
+    plot_path = os.path.join(Folders.models_folder(), '{0}/train_validation'.format(model_name))
+    FitPlotter.save_plot(history.history, plot_path)
 
     val_loss = np.asarray(history.history['val_loss'])
     min_loss_epoch = np.argmin(val_loss)
@@ -102,10 +113,8 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
     # (TODO) Step 3: Save other visuals
 
 
-def save_metadata(model_metadata):
-    models_folder = Folders.models_folder()
-    model_name = model_metadata['model_name']
-    with open(models_folder + model_name + '/metadata.csv', 'w') as f:
+def save_metadata(path, model_metadata):
+    with open(path, 'w') as f:
         for k, v in model_metadata.items():
             f.write('{0}: {1}\n'.format(k, v))
 
@@ -118,7 +127,8 @@ def extract_metadata(frame):
             if str(v).startswith('<class'):
                 v = v.__name__
             metadata[k] = v
-    metadata['backend'] = keras.backend.backend()
+    metadata['keras_backend'] = keras.backend.backend()
+    metadata['keras_version'] = keras.__version__
     metadata['platform'] = sys.platform
     metadata['python_version'] = sys.version
     return metadata
@@ -207,6 +217,7 @@ def train_holo_net(descriptive_name, dataset='ds-lymphoma',
 
     # Step 1: load data
     d_raw = DataLoader.load_training(dataset=dataset, records=records, separate=separate)
+
     d_test_raw = DataLoader.load_testing(dataset=dataset, records=records, separate=separate)
 
     # Step 2: Configure architecture
@@ -221,7 +232,7 @@ def train_holo_net(descriptive_name, dataset='ds-lymphoma',
                      output_depth=output_depth, activation=activation)
     model_name = descriptive_name
     epoch, train_loss, val_loss = train(model_name, model, train_data,
-        train_label, epochs, model_metadata=metadata, batch_size=batch_size,
+        train_label, epochs, model_metadata=metadata, batch_size=batch_size, holonet=True,
             save_best_only=save_best_only, test_data=test_data, test_labels=test_label)
     return model_name, epoch, train_loss, val_loss
 
@@ -297,3 +308,4 @@ def train_holo_net(descriptive_name, dataset='ds-lymphoma',
 #     records=-1, separate=False, batch_size=16,
 #     activation=A.PReLU, advanced_activations=True,
 #     last_activation='sigmoid', output_depth=1)
+

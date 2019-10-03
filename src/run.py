@@ -3,13 +3,13 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import scipy.sparse.linalg
 from sys import platform
-
+from src.data.diffraction import DiffractionGenerator
 # on windows box (with AMD GPU) use keras plaidml backend...
 # if platform == "win32":
 #     os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
     # import plaidml.keras
     # plaidml.keras.install_backend()
-
+import timeit
 
 import keras.layers.advanced_activations as A
 
@@ -117,11 +117,37 @@ from src.data.loader import DataLoader
 # ssim = prediction('hangul_5', data, label, transpose=False,
 #         long_description='Predict full training set of MNIST holograms (mnist-diffraction) using hangul_5 model')
 
+
+start = timeit.timeit()
 train_holo_net('holo_net_64_1', dataset='hangul_5', records=-1,
             filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=76,
            batch_size=16, activation='sigmoid',
-           output_depth=1, long_description='2st-pass training of holonet single 64x64 filter')
+           output_depth=1, long_description='2nd-pass training of holonet single 64x64 filter')
+end = timeit.timeit()
+print(end - start)
 
+# generate free space transfer
+# import numpy as np
+# import imageio
+# data, label = DataLoader.load_testing(records=1, separate = False,
+#             dataset='mnist-diffraction')
+# Gfp = DiffractionGenerator.freeSpaceTransfer(np.squeeze(data[0]), z=2.5e-3, lmbda=405e-9, upsample=2)
+# center = Gfp.shape[0] //
+# 2
+# Gfp_mag = np.abs(Gfp)[center-32:center+32,center-32:center+32]
+# imageio.imwrite('f:/d3-recon-ml/Gfp64mag.png', Gfp_mag)
+
+
+# train_holo_net('holo_net_64_2_lymphoma', dataset='ds-lymphoma', records=-1,
+#             filter_size=64, learn_rate=1e-4, conv_depth=2, epochs=76,
+#            batch_size=16, activation='sigmoid',
+#            output_depth=1, long_description='Train holonet64 with 2 filters on lymphoma (real/imag) dataset')
+#
+
+
+
+# w = m.layers[1].get_weights()
+# imageio.imwrite('f:/d3-recon-ml/holo64x64.png',w[0])
 
 # Only fit SSIM Histogram on last epoch, otherwise use normal/skew distribution...
 # TODO: Add metadata to predictions folder
@@ -129,7 +155,7 @@ train_holo_net('holo_net_64_1', dataset='hangul_5', records=-1,
 # DONE: Add platform and GPU to the model metadata file
 # TODO: Test AWS vs. local GPU performance
 # DONE: Change model name to remove "unet_6_3" etc. This is now in metadata.csv
-# TODO: Add a text descrption the "train_unet" function which gets stored in metadata.csv
+# TODO: Add a text description the "train_unet" function which gets stored in metadata.csv
 # TODO: Add model train/predict timings for easy performance comparison
 # TODO: Organize SSIM best to worst, and create a "sample" folder with some examples
 # TODO: Predict on every epoch for small subset and save to an evolution folder
