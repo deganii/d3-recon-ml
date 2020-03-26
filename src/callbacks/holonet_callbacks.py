@@ -13,7 +13,7 @@ from io import BytesIO, StringIO
 
 class HoloNetCallback(ModelCallback):
 
-    def __init__(self, model_name, experiment_id):
+    def __init__(self, model_name, experiment_id, dataset_name='hangul_1'):
         super(HoloNetCallback, self).__init__(model_name, experiment_id)
         self.current_epoch = 0
         # self.test_data = test_data
@@ -24,7 +24,7 @@ class HoloNetCallback(ModelCallback):
         self.video_frame = None
         self.video_draw = None
         self.fnt = None
-        d_test_raw = DataLoader.load_testing(dataset='hangul_1', records=-1, separate=False)
+        d_test_raw = DataLoader.load_testing(dataset=dataset_name, records=-1, separate=False)
         self.hangul_1_data, self.hangul_1_label = d_test_raw
         np.random.seed(0)
 

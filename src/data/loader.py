@@ -18,12 +18,12 @@ class DataLoader(object):
                 raw_n = np.load(raw_trunc, mmap_mode='r')
 
                 if separate:
-                    return raw_n['data'], raw_n['labels'][:, 0, ...], raw_n['labels'][:, 1, ...]
+                    return raw_n['data'], raw_n['labels'][:, ..., 0], raw_n['labels'][:, ..., 1]
                 else:
                     if len(raw_n['labels'].shape) == 3:
-                        return raw_n['data'][..., np.newaxis], raw_n['labels'][...,np.newaxis]
+                        return raw_n['data'][..., np.newaxis], raw_n['labels'][..., np.newaxis]
                     else:
-                        return raw_n['data'], np.moveaxis(np.squeeze(raw_n['labels']), 1, -1)
+                        return raw_n['data'], raw_n['labels'] # np.moveaxis(np.squeeze(), 1, -1)
             else:
                 if records > raw['data'].shape[0]:
                     records = raw['data'].shape[0]
@@ -31,20 +31,20 @@ class DataLoader(object):
                 np.savez(raw_trunc, data=data, labels=labels)
 
                 if separate:
-                    return data, labels[:, 0, ...], labels[:, 1, ...]
+                    return data, labels[..., 0], labels[..., 1]
                 else:
                     if len(labels.shape) == 3:
-                        return data[..., np.newaxis], labels[...,np.newaxis]
+                        return data[..., np.newaxis], labels[..., np.newaxis]
                     else:
-                        return data, np.moveaxis(np.squeeze(labels), 1, -1)
+                        return data, labels #np.moveaxis(np.squeeze(labels), 1, -1)
         else:
             if separate:
-                return raw['data'], raw['labels'][:, 0, ...], raw['labels'][:, 1, ...]
+                return raw['data'], raw['labels'][..., 0], raw['labels'][..., 1]
             else:
                 if len(raw['labels'].shape) == 3:
                     return raw['data'][..., np.newaxis], raw['labels'][..., np.newaxis]
                 else:
-                    return raw['data'], np.moveaxis(np.squeeze(raw['labels']), 1, -1)
+                    return raw['data'], raw['labels'] #np.moveaxis(np.squeeze(raw['labels']), 1, -1)
 
     @classmethod
     def load_training(cls, dataset='ds-lymphoma', records=-1, separate=True):

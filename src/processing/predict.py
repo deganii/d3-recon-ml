@@ -89,17 +89,17 @@ def prediction(model_name, data, labels, save_err_img = False,
 
     predictions = predictions.astype(np.float64)
     # check if the network predicts the complex valued image or just one component
-    complex_valued = predictions.shape[-1] == 2
+    complex_valued = predictions.shape[-1] > 1
 
     # we are color-mapping a phase pre
     if phase_mapping and complex_valued:
-        predictions_complex = predictions[..., 0]  + 1j * predictions[..., 1]
+        predictions_complex = predictions[..., 1]  + 1j * predictions[..., 2]
         predictions = np.angle(predictions_complex)
-        labels_complex = labels[..., 0] + 1j * labels[..., 1]
+        labels_complex = labels[..., 1] + 1j * labels[..., 2]
         labels = np.angle(labels_complex)
 
     # update for phase flattening
-    complex_valued = predictions.shape[-1] == 2
+    complex_valued = predictions.shape[-1] > 1
 
     if save_n < 0 or save_n > predictions.shape[0]:
         save_n = predictions.shape[0]
@@ -136,9 +136,10 @@ def prediction(model_name, data, labels, save_err_img = False,
 
         # calculate the structural similarity index (SSIM) between prediction and source
         if complex_valued:
-            for j,name in enumerate(['real', 'imag']):
+            for j,name in enumerate(['mag', 'real', 'imag']):
                 ssim[i, j] = skimage.measure.compare_ssim(
                     predictions[i, ..., j], labels[i, ..., j])
+                ms_err[i, j] = np.mean(np.square(predictions[i, ..., j] - labels[i, ..., j]))
 
                 # todo: check for min > 0 (don't need to add)
                 # todo: check for max <= 0?
@@ -227,12 +228,18 @@ def prediction(model_name, data, labels, save_err_img = False,
 
 
     # add index to ssim
-    indexed_ssim_mse = np.transpose(np.vstack((np.arange(ssim.shape[0]), ssim, ms_err)))
+    if complex_valued:
+        indexed_ssim_mse = np.concatenate((ssim, ms_err), axis=1)
+        np.savetxt(mp_folder + 'stats.txt', indexed_ssim_mse, header=header, fmt="%10.5f %10.5f %10.5f %10.5f %10.5f %10.5f")
+        # indexed_ssim_mse = np.concatenate((np.arange(ssim.shape[0]), indexed_ssim_mse))
+    else:
+        indexed_ssim_mse = np.transpose(np.vstack((np.arange(ssim.shape[0]), ssim, ms_err)))
+        np.savetxt(mp_folder + 'stats.txt', indexed_ssim_mse, header=header, fmt="%i %10.5f %10.5f")
     # indexed_ssim_mse = np.array(indexed_ssim_mse, dtype=[("idx", int),  ("SSIM", float), ("MSE", float)])
 
-    np.savetxt(mp_folder + 'stats.txt', indexed_ssim_mse, header=header, fmt="%i %10.5f %10.5f")
+
     np.savez(mp_folder + 'stats.npz', indexed_ssim_mse)
-    svg_path = SSIMPlotter.save_plot(model_name, ssim, mp_folder=mp_folder, fit_type='skew')
+    svg_path = SSIMPlotter.save_plot(model_name, ssim[0, :], mp_folder=mp_folder, fit_type='skew')
     return ssim, svg_path, tiled_imgs, best_imgs, worst_imgs
 
 

@@ -6,7 +6,7 @@ class ModelCallback(Callback):
     # simple wrapper with convenience functions for callbacks
 
     def __init__(self, model_name, experiment_id,
-                 period=5, save_every_epoch_until=5):
+                 period=5, save_every_epoch_until=2):
         super(Callback, self).__init__()
         self.model_name = model_name
         self.experiment_id = experiment_id
@@ -15,7 +15,7 @@ class ModelCallback(Callback):
         self.period = period
         self.save_every_epoch_until = save_every_epoch_until
         # TODO: REMOVE THIS HACK FOR VIDEO:
-        self.save_every_epoch_until = 75
+        # self.save_every_epoch_until = 75
 
     def on_epoch_begin(self, epoch, logs=None):
         self.current_epoch = epoch

@@ -40,8 +40,8 @@ class PILElement(FigureElement):
 
 class SSIMPlotterCallback(ModelCallback):
 
-    def __init__(self, model_name, experiment_id, test_data, test_labels):
-        super(SSIMPlotterCallback, self).__init__(model_name, experiment_id)
+    def __init__(self, model_name, experiment_id, test_data, test_labels, period=5):
+        super(SSIMPlotterCallback, self).__init__(model_name, experiment_id, period=period)
         self.test_data = test_data
         self.test_labels = test_labels
 
@@ -101,8 +101,9 @@ class SSIMPlotterCallback(ModelCallback):
             # make a coherent summary from the available information
             tiled_img = self.tileImages(tiled_imgs,n_columns=n_columns)
             tiled_img.save(exp_folder+'tiled.png', format="PNG")
-            best_img = self.tileImages(best_imgs, n_columns=n_columns)
-            worst_img = self.tileImages(worst_imgs, n_columns=n_columns)
+            if len(best_imgs) > 0 and len(worst_imgs) > 0:
+                best_img = self.tileImages(best_imgs, n_columns=n_columns)
+                worst_img = self.tileImages(worst_imgs, n_columns=n_columns)
 
             fig = sg.SVGFigure("16cm", "6.5cm")
             ssim_svg = sg.fromfile(ssim_svg_path)

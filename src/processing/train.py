@@ -2,7 +2,7 @@ import os
 import sys
 import time
 
-from src.callbacks.holonet_callbacks import HoloNetCallback
+# from src.callbacks.holonet_callbacks import HoloNetCallback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
@@ -30,8 +30,10 @@ from src.callbacks.fit_plotter_callback import FitPlotterCallback
 from src.callbacks.time_history_callback import TimeHistory
 from src.callbacks.ssim_plotter_callback import SSIMPlotterCallback
 from src.callbacks.model_to_experiment import ModelToExperiment
+from src.callbacks.holonet_filter_callbacks import HoloNetFilterCallback
+
 def get_callbacks(model_name, experiment_id, batch_size = 32,
-                  save_best_only = True,
+                  save_best_only = True, period=5,
                   test_data=None, test_labels=None, holonet = False):
     models_folder = Folders.models_folder()
     experiments_folder = Folders.experiments_folder()
@@ -48,8 +50,8 @@ def get_callbacks(model_name, experiment_id, batch_size = 32,
     fit_plotter = FitPlotterCallback(model_name, experiment_id)
     time_history = TimeHistory(model_name, experiment_id)
     ssim_plotter = SSIMPlotterCallback(model_name, experiment_id, test_data, test_labels)
-    copycallback = ModelToExperiment(model_name, experiment_id)
-    callbacks = [model_checkpoint, csv_logger, fit_plotter, time_history, ssim_plotter, copycallback]
+    # copycallback = ModelToExperiment(model_name, experiment_id)
+    callbacks = [model_checkpoint, csv_logger, fit_plotter, time_history, ssim_plotter]#, copycallback]
 
     if keras.backend.backend() == 'tensorflow':
         tensorboard = TensorBoard(log_dir=models_folder + model_name, histogram_freq=0,
@@ -58,14 +60,15 @@ def get_callbacks(model_name, experiment_id, batch_size = 32,
                               embeddings_layer_names=None, embeddings_metadata=None)
         callbacks.append(tensorboard)
     if holonet:
-        callbacks.append(HoloNetCallback(model_name, experiment_id))
+        callbacks.append(HoloNetFilterCallback(model_name, experiment_id, period=period))
+        # callbacks.append(HoloNetCallback(model_name, experiment_id))
 
     return callbacks
 
 
 def train(model_name, model, data, labels, epochs, save_summary=True,
           batch_size=32, save_best_only=True, model_metadata=None,
-          test_data=None, test_labels=None, holonet=False):
+          test_data=None, test_labels=None, holonet=False, period=5):
     """ Train a generic model and save relevant data """
     models_folder = Folders.models_folder()
     os.makedirs(models_folder + model_name, exist_ok=True)
@@ -97,7 +100,7 @@ def train(model_name, model, data, labels, epochs, save_summary=True,
         validation_split=0.2, callbacks=get_callbacks(
             model_name, experiment_id, batch_size=batch_size,
             save_best_only=save_best_only, holonet=holonet,
-            test_data=test_data, test_labels=test_labels))
+            test_data=test_data, test_labels=test_labels, period=period))
 
     # Step 3: Plot the validation results of the model, and save the performance data
     plot_path = os.path.join(Folders.models_folder(), '{0}/train_validation'.format(model_name))
@@ -207,9 +210,10 @@ def train_unet(descriptive_name, dataset='ds-lymphoma',
         return model_name, epoch, train_loss, val_loss
 
 def train_holo_net(descriptive_name, dataset='ds-lymphoma',
-               filter_size=32, conv_depth=1,
+               filter_size=32, conv_depth=1, extra_phase_layers=0,
                learn_rate=1e-4, epochs=18, loss='mse', records=-1,
                separate=False,  batch_size=32, activation: object='relu',
+               advanced_activations=True, period=5,
                output_depth=1, save_best_only=True, long_description=''):
 
     # gather up the params
@@ -217,7 +221,6 @@ def train_holo_net(descriptive_name, dataset='ds-lymphoma',
 
     # Step 1: load data
     d_raw = DataLoader.load_training(dataset=dataset, records=records, separate=separate)
-
     d_test_raw = DataLoader.load_testing(dataset=dataset, records=records, separate=separate)
 
     # Step 2: Configure architecture
@@ -225,15 +228,19 @@ def train_holo_net(descriptive_name, dataset='ds-lymphoma',
 
     train_data, train_label = d_raw
     test_data, test_label = d_test_raw
+    test_label = np.squeeze(test_label)
+    train_label = np.squeeze(train_label)
     img_rows, img_cols = train_data.shape[1], train_data.shape[2]
 
     model = get_holo_transfer(img_rows, img_cols, filter_size=filter_size,
                      conv_depth=conv_depth, optimizer=Adam(lr=learn_rate), loss=loss,
-                     output_depth=output_depth, activation=activation)
+                     output_depth=output_depth, activation=activation,
+                     advanced_activations=advanced_activations,
+                     extra_phase_layers=extra_phase_layers)
     model_name = descriptive_name
     epoch, train_loss, val_loss = train(model_name, model, train_data,
         train_label, epochs, model_metadata=metadata, batch_size=batch_size, holonet=True,
-            save_best_only=save_best_only, test_data=test_data, test_labels=test_label)
+            save_best_only=save_best_only, test_data=test_data, test_labels=test_label, period=period)
     return model_name, epoch, train_loss, val_loss
 
 

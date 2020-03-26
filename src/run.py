@@ -118,13 +118,41 @@ from src.data.loader import DataLoader
 #         long_description='Predict full training set of MNIST holograms (mnist-diffraction) using hangul_5 model')
 
 
-start = timeit.timeit()
-train_holo_net('holo_net_64_1', dataset='hangul_5', records=-1,
-            filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=76,
-           batch_size=16, activation='sigmoid',
-           output_depth=1, long_description='2nd-pass training of holonet single 64x64 filter')
-end = timeit.timeit()
-print(end - start)
+# start = timeit.timeit()
+# train_holo_net('holo_net_64_1', dataset='hangul_5', records=-1,
+#             filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=76,
+#            batch_size=16, activation='sigmoid',
+#            output_depth=1, long_description='2nd-pass training of holonet single 64x64 filter')
+# end = timeit.timeit()
+# print(end - start)
+
+# train_holo_net('holo_net_64_3', dataset='ds-lymphoma', records=-1,
+#             filter_size=64, learn_rate=1e-4, conv_depth=3, epochs=76,
+#            batch_size=16, activation='sigmoid',
+#            output_depth=3, long_description='1st training of holonet triple 64x64 filter with lymphoma Holo --> Mag-Real-Imag pairs')
+
+# train_holo_net('holo_net_64_3_phase_arms', dataset='ds-lymphoma', records=-1,
+#             filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=76,
+#            batch_size=16, activation='sigmoid',
+#            output_depth=3, long_description='Feed magnitude information into phase prediction')
+
+# train_holo_net('holo_net_64_3_phase_depth_2', dataset='ds-lymphoma', records=-1,
+#             filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=76,
+#            batch_size=16, activation='sigmoid', extra_phase_layers=1,
+#            output_depth=3, long_description='Feed magnitude information into phase prediction')
+#
+# train_holo_net('holo_net_64_3_phase_depth_2_prelu', dataset='ds-lymphoma', records=-1,
+#             filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=151, period=15,
+#            batch_size=16, activation=A.PReLU, advanced_activations=True, extra_phase_layers=1,
+#            output_depth=3, long_description='Feed magnitude information into phase prediction')
+
+
+train_holo_net('holo_net_64_3_phase_depth_2_prelu_sigmoid', dataset='ds-lymphoma', records=-1,
+            filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=151, period=15,
+           batch_size=16, activation='sigmoid', advanced_activations=True, extra_phase_layers=1,
+           output_depth=3, long_description='Feed magnitude information into phase prediction')
+
+
 
 # generate free space transfer
 # import numpy as np
@@ -144,8 +172,6 @@ print(end - start)
 #            output_depth=1, long_description='Train holonet64 with 2 filters on lymphoma (real/imag) dataset')
 #
 
-
-
 # w = m.layers[1].get_weights()
 # imageio.imwrite('f:/d3-recon-ml/holo64x64.png',w[0])
 
@@ -162,3 +188,4 @@ print(end - start)
 # TODO: update train/validation curve on each epoch for live monitoring
 # TODO: Add rotation/stretching and partial predictions (train on whole)
 # TODO: vectorize graphs so they are easily incorporated into paper.
+

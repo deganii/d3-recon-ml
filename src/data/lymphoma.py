@@ -22,7 +22,7 @@ import imageio
 class LymphomaGenerator(object):
     @classmethod
     def partitionTrainingAndTestSet(cls, set_name='ds-lymphoma'):
-        data_folder = '../../data/'
+        data_folder = Folders.data_folder()
         data_npz = np.load(data_folder + set_name + '-all.npz')
         all_data, all_labels = data_npz['data'], data_npz['labels']
         np.random.seed(0)
@@ -41,7 +41,7 @@ class LymphomaGenerator(object):
             npz = np.load(data_folder + set_name + '-{0}{1}.npz'.format(partition, suffix))
             # create data and labels with the same shape
             labels = npz['labels']
-            ri = labels[:   ,0,...] + 1j * labels[:,1,...]
+            ri = labels[..., 0] + 1j * labels[..., 1]
             mag, phase = np.abs(ri), np.angle(ri)
             mag_phase_labels = np.stack((mag, phase), 1)
             # save down
@@ -56,8 +56,8 @@ class LymphomaGenerator(object):
             npz = np.load(data_folder + set_name + '-{0}{1}.npz'.format(partition, suffix))
             # create data and labels with the same shape
             holo = npz['data']
-            mag = npz['labels'][:, 0, ...]
-            phase = npz['labels'][:,1,...]
+            mag = npz['labels'][..., 0]
+            phase = npz['labels'][..., 1]
             phase_x, phase_y = np.cos(phase), np.sin(phase)
             phase_labels = np.stack((phase_x, phase_y), 1)
 
@@ -85,8 +85,10 @@ class LymphomaGenerator(object):
     @classmethod
     def generateImages(cls, set_name, stride=100, tile=(192,192),
                       input_folder='../../data/Reconstruction/',
-                      output_folder='../../data/',
-                      save_npz=True):
+                      output_folder=None, save_npz=True):
+        if output_folder is None:
+            output_folder = Folders.data_folder()
+
         data = None
         labels = None
         seq = 0
@@ -118,12 +120,16 @@ class LymphomaGenerator(object):
             recon = np.asarray([[[num for num in row] for row in rows] for rows in reconImage])
             reconReal = recon[:, :, 0]
             reconImag = recon[:, :, 1]
+            reconMag = np.abs(reconReal + 1j * reconImag)
+            # reconPhase = np.angle(reconReal + 1j * reconImag)
 
             viewReconReal = reconReal + np.abs(np.min(reconReal))
             viewReconImag = reconImag + np.abs(np.min(reconImag))
 
             viewReconReal = Image.fromarray(np.transpose(np.uint8(255.0 * (viewReconReal) / np.max(viewReconReal))))
             viewReconImag = Image.fromarray(np.transpose(np.uint8(255.0 * (viewReconImag) / np.max(viewReconImag))))
+            viewReconMag = Image.fromarray(np.transpose(np.uint8(255.0 * (reconMag) / np.max(reconMag))))
+            # viewReconPhase = Image.fromarray(np.transpose(np.uint8(255.0 * (reconPhase) / np.max(reconPhase))))
 
             #imageio.imwrite('./test_viewreconReal.png', viewReconReal)
             #imageio.imwrite('./test_viewreconImag.png', viewReconImag)
@@ -139,8 +145,8 @@ class LymphomaGenerator(object):
             N_count = int(np.floor(N/stride))
 
             if data is None:
-                data = np.zeros((num_input_files * 4 * M_count * N_count, tile[0] , tile[1]))
-                labels = np.zeros((num_input_files * 4 * M_count * N_count, 2, tile[0] , tile[1]))
+                data = np.zeros((num_input_files * 4 * M_count * N_count, tile[0], tile[1]))
+                labels = np.zeros((num_input_files * 4 * M_count * N_count, tile[0], tile[1], 3))
                 # print("data shape: ")
                 # print(data.shape)
                 # print('\n')
@@ -163,28 +169,41 @@ class LymphomaGenerator(object):
 
                         holoTile = viewHologram.crop(crop_mn)
                         realTile = viewReconReal.crop(crop_mn)
-                        imageTile = viewReconImag.crop(crop_mn)
+                        imagTile = viewReconImag.crop(crop_mn)
+                        magTile = viewReconMag.crop(crop_mn)
 
                         holoTile = holoTile.rotate(rot, resample=Image.BICUBIC)
                         realTile = realTile.rotate(rot, resample=Image.BICUBIC)
-                        imageTile = imageTile.rotate(rot, resample=Image.BICUBIC)
+                        imagTile = imagTile.rotate(rot, resample=Image.BICUBIC)
+                        magTile = magTile.rotate(rot, resample=Image.BICUBIC)
 
                         transformation = "tm_{0}_tn_{1}_rot_{2}".format(st_m, st_n, rot)
 
-                        holoDestFilename = '{0:05}-H-{1}-{2}.png'.format(seq,transformation,input_title)
-                        realDestFilename = '{0:05}-R-{1}-{2}.png'.format(seq,transformation,input_title)
-                        imagDestFilename = '{0:05}-I-{1}-{2}.png'.format(seq,transformation,input_title)
+                        holoDestFilename = '{0:05}-0-H-{1}-{2}.png'.format(seq,transformation,input_title)
+                        realDestFilename = '{0:05}-3-R-{1}-{2}.png'.format(seq,transformation,input_title)
+                        imagDestFilename = '{0:05}-2-I-{1}-{2}.png'.format(seq,transformation,input_title)
+                        magDestFilename =  '{0:05}-1-M-{1}-{2}.png'.format(seq, transformation, input_title)
 
                         imageio.imwrite(os.path.join(image_folder, holoDestFilename), holoTile)
                         imageio.imwrite(os.path.join(image_folder, realDestFilename), realTile)
-                        imageio.imwrite(os.path.join(image_folder, imagDestFilename), imageTile)
+                        imageio.imwrite(os.path.join(image_folder, imagDestFilename), imagTile)
+                        imageio.imwrite(os.path.join(image_folder, magDestFilename), magTile)
 
                         # append the raw data to the
                         data[seq, :] = np.rot90(subNormAmp[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)
-                        labels[seq, 0, :] = np.rot90(reconReal[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)
-                        labels[seq, 1, :] = np.rot90(reconImag[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1])
+                        # channel 0 is real component, 1 is imaginary...
+                        labels[seq, ..., 0] = np.rot90(reconMag[st_m:end_m, st_n:end_n], int(rot / 90))  # .reshape(tile[0] , tile[1])
+                        labels[seq, ..., 1] = np.rot90(reconReal[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)
+                        labels[seq, ..., 2] = np.rot90(reconImag[st_m:end_m, st_n:end_n], int(rot / 90))  # .reshape(tile[0] , tile[1])
                         seq = seq + 1
         data = data[..., np.newaxis]
         labels = labels[..., np.newaxis]
         if save_npz:
             np.savez(os.path.join(output_folder, set_name + '-all.npz'), data=data, labels=labels)
+
+
+if __name__ == "__main__":
+    # recon_folder = Folders.data_folder() + 'Reconstruction/'
+    # LymphomaGenerator.generateImages(set_name='ds-lymphoma', input_folder=recon_folder, output_folder=Folders.data_folder())
+    LymphomaGenerator.partitionTrainingAndTestSet( set_name='ds-lymphoma')
+
