@@ -1,7 +1,7 @@
 import os
 import sys
 
-from src.processing.predict_realtime import prediction_realtime
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import scipy.sparse.linalg
@@ -22,6 +22,7 @@ from src.loss.avg import mse_dssim_loss
 from src.processing.predict import prediction
 from src.processing.predict import prediction_with_merge
 from src.data.loader import DataLoader
+from src.processing.predict_realtime import prediction_realtime
 
 # all directories are relative to the src folder
 
