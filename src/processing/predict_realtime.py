@@ -54,16 +54,16 @@ def prediction_realtime(model_name, data, labels, save_err_img = False,
         with open(mp_folder+"desc.txt", "w") as text_file:
             text_file.write(long_description)
 
-    avg_fps = 0.0
-    total_time = 0.0
-    for i in range(data.shape[0]):
-        start = timer()
-        model.predict(data[np.newaxis, i, ...], batch_size=1, verbose=0)
-        end = timer()
-        total_time += end - start
-    print('Number Frames: {0}'.format(data.shape[0]))
-    print('Total Time (s): {0}'.format(total_time))
-    print('Average FPS: {0}'.format(data.shape[0]/total_time))
+    for j in [50, 100, 500, 1000, 5000]:
+        total_time = 0.0
+        for i in range(j):
+            start = timer()
+            model.predict(data[np.newaxis, i, ...], batch_size=1, verbose=0)
+            end = timer()
+            total_time += end - start
+        print('Number Frames: {0}'.format(data.shape[0]))
+        print('Total Time (s): {0}'.format(total_time))
+        print('Average FPS: {0}'.format(data.shape[0]/total_time))
 
 
     # check if the network predicts the complex valued image or just one component
