@@ -61,9 +61,9 @@ def prediction_realtime(model_name, data, labels, save_err_img = False,
         model.predict(data[np.newaxis, i, ...], batch_size=1, verbose=0)
         end = timer()
         total_time += end - start
-    print('Number Frames: {0}'.format(data.shape[0]))
+    print('Number Frames: {0}'.format(min(max_frames, data.shape[0])))
     print('Total Time (s): {0}'.format(total_time))
-    print('Average FPS: {0}'.format(data.shape[0]/total_time))
+    print('Average FPS: {0}'.format(min(max_frames, data.shape[0])/total_time))
 
 
     # check if the network predicts the complex valued image or just one component
