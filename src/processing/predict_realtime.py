@@ -37,7 +37,7 @@ def prediction_realtime(model_name, data, labels, save_err_img = False,
                prediction_name=None, phase_mapping=False,
                weights_file='weights.h5', long_description=None,
                transpose=True, model=None, mp_folder=None,
-               save_n=-1, zip_images=False, tiled_list=None):
+               save_n=-1, zip_images=False, tiled_list=None, max_frames=-1):
 
     if model is None:
         model = keras.models.load_model(Folders.models_folder() + model_name + '/' + weights_file)
@@ -54,16 +54,16 @@ def prediction_realtime(model_name, data, labels, save_err_img = False,
         with open(mp_folder+"desc.txt", "w") as text_file:
             text_file.write(long_description)
 
-    for j in [50, 100, 500, 1000, 5000]:
-        total_time = 0.0
-        for i in range(j):
-            start = timer()
-            model.predict(data[np.newaxis, i, ...], batch_size=1, verbose=0)
-            end = timer()
-            total_time += end - start
-        print('Number Frames: {0}'.format(data.shape[0]))
-        print('Total Time (s): {0}'.format(total_time))
-        print('Average FPS: {0}'.format(data.shape[0]/total_time))
+    # for j in [50, 100, 500, 1000, 5000]:
+    total_time = 0.0
+    for i in range(min(max_frames, data.shape[0])):
+        start = timer()
+        model.predict(data[np.newaxis, i, ...], batch_size=1, verbose=0)
+        end = timer()
+        total_time += end - start
+    print('Number Frames: {0}'.format(data.shape[0]))
+    print('Total Time (s): {0}'.format(total_time))
+    print('Average FPS: {0}'.format(data.shape[0]/total_time))
 
 
     # check if the network predicts the complex valued image or just one component
