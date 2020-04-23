@@ -1,7 +1,8 @@
 import os
 import sys
 
-
+if sys.version_info[0] < 3:
+    raise Exception("Must be using Python 3")
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import scipy.sparse.linalg
@@ -161,14 +162,8 @@ from src.processing.predict_realtime import prediction_realtime
 #            output_depth=3, long_description='Feed magnitude information into phase prediction')
 
 
-data, label = DataLoader.load_training(records=-1, separate = False,
-            dataset='hangul_tiny')
+data, label = DataLoader.load_training(records=-1, separate = False, dataset='hangul_5')
 ssim = prediction_realtime('holo_net_64_1', data, label, transpose=False, long_description='')
-
-
-
-
-
 
 # generate free space transfer
 # import numpy as np
