@@ -56,7 +56,7 @@ def prediction_realtime(model_name, data, labels, save_err_img = False,
 
     avg_fps = 0.0
     total_time = 0.0
-    for i in data.shape[0]:
+    for i in range(data.shape[0]):
         start = timer()
         model.predict(data[np.newaxis, i, ...], batch_size=1, verbose=0)
         end = timer()
