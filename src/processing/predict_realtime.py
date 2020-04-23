@@ -33,7 +33,7 @@ from PIL import Image
 from src.visualization.ssim_plotter import SSIMPlotter
 
 #realtime prediction stats
-def prediction(model_name, data, labels, save_err_img = False,
+def prediction_realtime(model_name, data, labels, save_err_img = False,
                prediction_name=None, phase_mapping=False,
                weights_file='weights.h5', long_description=None,
                transpose=True, model=None, mp_folder=None,

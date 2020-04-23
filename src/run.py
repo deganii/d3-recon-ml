@@ -1,5 +1,8 @@
 import os
 import sys
+
+from src.processing.predict_realtime import prediction_realtime
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import scipy.sparse.linalg
 from sys import platform
@@ -146,11 +149,23 @@ from src.data.loader import DataLoader
 #            batch_size=16, activation=A.PReLU, advanced_activations=True, extra_phase_layers=1,
 #            output_depth=3, long_description='Feed magnitude information into phase prediction')
 
+# train_holo_net('holo_net_64_3_phase_depth_2_prelu_sigmoid', dataset='ds-lymphoma', records=-1,
+#             filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=151, period=15,
+#            batch_size=16, activation='sigmoid', advanced_activations=True, extra_phase_layers=1,
+#            output_depth=3, long_description='Feed magnitude information into phase prediction')
 
-train_holo_net('holo_net_64_3_phase_depth_2_prelu_sigmoid', dataset='ds-lymphoma', records=-1,
-            filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=151, period=15,
-           batch_size=16, activation='sigmoid', advanced_activations=True, extra_phase_layers=1,
-           output_depth=3, long_description='Feed magnitude information into phase prediction')
+# train_holo_net('holo_net_128', dataset='ds-lymphoma', records=-1,
+#             filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=151, period=15,
+#            batch_size=16, activation='sigmoid', advanced_activations=True, extra_phase_layers=1,
+#            output_depth=3, long_description='Feed magnitude information into phase prediction')
+
+
+data, label = DataLoader.load_training(records=-1, separate = False,
+            dataset='hangul_tiny')
+ssim = prediction_realtime('holo_net_64_1', data, label, transpose=False, long_description='')
+
+
+
 
 
 
