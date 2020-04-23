@@ -390,4 +390,10 @@ class DiffractionGenerator(object):
 
 if __name__ == "__main__":
     # DiffractionGenerator.diffractMNIST()
-    DiffractionGenerator.diffractMNIST(set_name='mnist-chopped', chop=True)
+    #DiffractionGenerator.diffractMNIST(set_name='mnist-chopped', chop=True)
+
+    recon = np.asarray(Image.open(r'c:\dev\Worms.jpg').convert('L'))
+    # propagate to a hologram
+    holo = np.abs(DiffractionGenerator.freeSpacePropagation(recon, upsample=1, z=9e-4))
+    # image.save('output.png')
+    imageio.imwrite(r'c:\dev\holo.png', np.abs(holo))
