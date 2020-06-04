@@ -4,6 +4,8 @@ import numpy as np
 from src.processing.folders import Folders
 K.set_image_data_format('channels_last')
 
+
+
 class DataLoader(object):
 
     @classmethod
@@ -68,4 +70,6 @@ class DataLoader(object):
                         train_labels[start:end, ...]
 
 # Load just 64 training records
+# DataLoader.load_training(records=64)
+
 # DataLoader.load_training(records=64)

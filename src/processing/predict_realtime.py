@@ -55,6 +55,7 @@ def prediction_realtime(model_name, data, labels, save_err_img = False,
             text_file.write(long_description)
 
     # for j in [50, 100, 500, 1000, 5000]:
+    # tensorflow lite
     total_time = 0.0
     for i in range(min(max_frames, data.shape[0])):
         start = timer()

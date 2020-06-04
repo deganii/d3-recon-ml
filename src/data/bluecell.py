@@ -1,4 +1,4 @@
-# generator of labeled breast cancer test images
+# generator of labeled lymphoma test images
 import os, glob
 import h5py
 import numpy as np
@@ -17,16 +17,12 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import cmocean
 import cmocean.cm
-
-import scipy
-import scipy.io
-import scipy.ndimage
 import imageio
 
-class BrCaGenerator(object):
+class BlueCellGenerator(object):
     @classmethod
-    def partitionTrainingAndTestSet(cls, set_name='ds-brca'):
-        data_folder = '../../data/'
+    def partitionTrainingAndTestSet(cls, set_name='ds-blue'):
+        data_folder = Folders.data_folder()
         data_npz = np.load(data_folder + set_name + '-all.npz')
         all_data, all_labels = data_npz['data'], data_npz['labels']
         np.random.seed(0)
@@ -39,13 +35,13 @@ class BrCaGenerator(object):
         np.savez(os.path.join(data_folder, set_name + '-test.npz'), data=test_data, labels=test_labels)
 
     @classmethod
-    def generateMagPhaseDataset(cls, set_name='ds-brca',  suffix = '-n64'):
+    def generateMagPhaseDataset(cls, set_name='ds-blue',  suffix = '-n64'):
         data_folder = Folders.data_folder()
         for partition in ['training', 'test']:
             npz = np.load(data_folder + set_name + '-{0}{1}.npz'.format(partition, suffix))
             # create data and labels with the same shape
             labels = npz['labels']
-            ri = labels[:   ,0,...] + 1j * labels[:,1,...]
+            ri = labels[..., 0] + 1j * labels[..., 1]
             mag, phase = np.abs(ri), np.angle(ri)
             mag_phase_labels = np.stack((mag, phase), 1)
             # save down
@@ -54,14 +50,14 @@ class BrCaGenerator(object):
                      data=npz['data'], labels=mag_phase_labels)
 
     @classmethod
-    def generateSplitPhaseDataset(cls, set_name='ds-brca-magphase',  suffix = '-n64'):
+    def generateSplitPhaseDataset(cls, set_name='ds-blue-magphase',  suffix = '-n64'):
         data_folder = Folders.data_folder()
         for partition in ['training', 'test']:
             npz = np.load(data_folder + set_name + '-{0}{1}.npz'.format(partition, suffix))
             # create data and labels with the same shape
             holo = npz['data']
-            mag = npz['labels'][:, 0, ...]
-            phase = npz['labels'][:,1,...]
+            mag = npz['labels'][..., 0]
+            phase = npz['labels'][..., 1]
             phase_x, phase_y = np.cos(phase), np.sin(phase)
             phase_labels = np.stack((phase_x, phase_y), 1)
 
@@ -86,14 +82,13 @@ class BrCaGenerator(object):
             np.savez(split_name + '.npz', data=npz['data'], labels=phase_labels)
 
 
-
-
-
     @classmethod
     def generateImages(cls, set_name, stride=100, tile=(192,192),
-                      input_folder='../../data/BrCa/120813_SKBR3-7umBeads_Profiling/Reconstruction/',
-                      output_folder='../../data/',
-                      save_npz=True):
+                      input_folder='../../data/Reconstruction/',
+                      output_folder=None, save_npz=True):
+        if output_folder is None:
+            output_folder = Folders.data_folder()
+
         data = None
         labels = None
         seq = 0
@@ -102,44 +97,42 @@ class BrCaGenerator(object):
         if not os.path.exists(image_folder):
             os.makedirs(image_folder)
 
-        input_files = glob.glob(input_folder + 'SKBR3_HER2_05.mat')
+        input_files = glob.glob(input_folder + '*.mat')
         num_input_files = len(input_files)
         for input_file in input_files:
-            # open brca image
-            sample_data = scipy.io.loadmat(input_file)
-            #sample_data = h5py.File(input_file, 'r')
+            # open blue image
+            sample_data = h5py.File(input_file, 'r')
             input_title = os.path.splitext(os.path.basename(input_file))[0]
 
             # load a sample image
-            subNormAmp = sample_data['NormAmp']
-            irng = sample_data['Range'][0]
-
-            # scale and crop subNormAmp
-            subNormAmp = subNormAmp[irng[2]:irng[3],irng[0]:irng[1]]
-            subNormAmp = scipy.ndimage.zoom(subNormAmp, 4, order=3)
+            subNormAmp = sample_data['subNormAmp']
             reconImage = sample_data['ReconImage']
-            reconImage = reconImage[:-1,:-1]
+
             #reshaped = [[reconImage[m, n] for m in range(reconImage.shape[0])] for n in range(reconImage.shape[1])]
             # convert to numpy array
 
-            subNormAmp = subNormAmp.astype(np.float32)
+            subNormAmp = np.asarray(subNormAmp)
             viewHologram = Image.fromarray(np.transpose(np.uint8(255.0 * subNormAmp / np.max(subNormAmp))))
 
-            # imageio.imwrite('./test_viewhologram.png', viewHologram)
+            #imageio.imwrite('./test_viewhologram.png', viewHologram)
 
             # convert from matlab tuples to a proper np array
-            #recon = np.asarray([[[num for num in row] for row in rows] for rows in reconImage])
-            reconReal = np.real(reconImage)
-            reconImag = np.imag(reconImage)
+            recon = np.asarray([[[num for num in row] for row in rows] for rows in reconImage])
+            reconReal = recon[:, :, 0]
+            reconImag = recon[:, :, 1]
+            reconMag = np.abs(reconReal + 1j * reconImag)
+            # reconPhase = np.angle(reconReal + 1j * reconImag)
 
             viewReconReal = reconReal + np.abs(np.min(reconReal))
             viewReconImag = reconImag + np.abs(np.min(reconImag))
 
             viewReconReal = Image.fromarray(np.transpose(np.uint8(255.0 * (viewReconReal) / np.max(viewReconReal))))
             viewReconImag = Image.fromarray(np.transpose(np.uint8(255.0 * (viewReconImag) / np.max(viewReconImag))))
+            viewReconMag = Image.fromarray(np.transpose(np.uint8(255.0 * (reconMag) / np.max(reconMag))))
+            # viewReconPhase = Image.fromarray(np.transpose(np.uint8(255.0 * (reconPhase) / np.max(reconPhase))))
 
-            # imageio.imwrite('./test_viewreconReal.png', viewReconReal)
-            # imageio.imwrite('./test_viewreconImag.png', viewReconImag)
+            #imageio.imwrite('./test_viewreconReal.png', viewReconReal)
+            #imageio.imwrite('./test_viewreconImag.png', viewReconImag)
 
             M = subNormAmp.shape[0]
             N = subNormAmp.shape[1]
@@ -152,8 +145,8 @@ class BrCaGenerator(object):
             N_count = int(np.floor(N/stride))
 
             if data is None:
-                data = np.zeros((num_input_files * 4 * M_count * N_count, tile[0] , tile[1]))
-                labels = np.zeros((num_input_files * 4 * M_count * N_count, 2, tile[0] , tile[1]))
+                data = np.zeros((num_input_files * 4 * M_count * N_count, tile[0], tile[1]))
+                labels = np.zeros((num_input_files * 4 * M_count * N_count, tile[0], tile[1], 3))
                 # print("data shape: ")
                 # print(data.shape)
                 # print('\n')
@@ -176,26 +169,32 @@ class BrCaGenerator(object):
 
                         holoTile = viewHologram.crop(crop_mn)
                         realTile = viewReconReal.crop(crop_mn)
-                        imageTile = viewReconImag.crop(crop_mn)
+                        imagTile = viewReconImag.crop(crop_mn)
+                        magTile = viewReconMag.crop(crop_mn)
 
                         holoTile = holoTile.rotate(rot, resample=Image.BICUBIC)
                         realTile = realTile.rotate(rot, resample=Image.BICUBIC)
-                        imageTile = imageTile.rotate(rot, resample=Image.BICUBIC)
+                        imagTile = imagTile.rotate(rot, resample=Image.BICUBIC)
+                        magTile = magTile.rotate(rot, resample=Image.BICUBIC)
 
                         transformation = "tm_{0}_tn_{1}_rot_{2}".format(st_m, st_n, rot)
 
-                        holoDestFilename = '{0:05}-H-{1}-{2}.png'.format(seq,transformation,input_title)
-                        realDestFilename = '{0:05}-R-{1}-{2}.png'.format(seq,transformation,input_title)
-                        imagDestFilename = '{0:05}-I-{1}-{2}.png'.format(seq,transformation,input_title)
+                        holoDestFilename = '{0:05}-0-H-{1}-{2}.png'.format(seq,transformation,input_title)
+                        realDestFilename = '{0:05}-3-R-{1}-{2}.png'.format(seq,transformation,input_title)
+                        imagDestFilename = '{0:05}-2-I-{1}-{2}.png'.format(seq,transformation,input_title)
+                        magDestFilename =  '{0:05}-1-M-{1}-{2}.png'.format(seq, transformation, input_title)
 
                         imageio.imwrite(os.path.join(image_folder, holoDestFilename), holoTile)
                         imageio.imwrite(os.path.join(image_folder, realDestFilename), realTile)
-                        imageio.imwrite(os.path.join(image_folder, imagDestFilename), imageTile)
+                        imageio.imwrite(os.path.join(image_folder, imagDestFilename), imagTile)
+                        imageio.imwrite(os.path.join(image_folder, magDestFilename), magTile)
 
                         # append the raw data to the
                         data[seq, :] = np.rot90(subNormAmp[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)
-                        labels[seq, 0, :] = np.rot90(reconReal[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)
-                        labels[seq, 1, :] = np.rot90(reconImag[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1])
+                        # channel 0 is real component, 1 is imaginary...
+                        labels[seq, ..., 0] = np.rot90(reconMag[st_m:end_m, st_n:end_n], int(rot / 90))  # .reshape(tile[0] , tile[1])
+                        labels[seq, ..., 1] = np.rot90(reconReal[st_m:end_m, st_n:end_n], int(rot / 90))#.reshape(tile[0] , tile[1], 1)
+                        labels[seq, ..., 2] = np.rot90(reconImag[st_m:end_m, st_n:end_n], int(rot / 90))  # .reshape(tile[0] , tile[1])
                         seq = seq + 1
         data = data[..., np.newaxis]
         labels = labels[..., np.newaxis]
@@ -204,9 +203,7 @@ class BrCaGenerator(object):
 
 
 if __name__ == "__main__":
-    # BrCaGenerator.generateImages('ds-brca-512', tile=(512,512))
+    recon_folder = 'D:\\d3-recon-ml\\data\\180123_PDAC_titration\\'
+    BlueCellGenerator.generateImages(set_name='ds-blue', input_folder=recon_folder, output_folder=Folders.data_folder())
+    BlueCellGenerator.partitionTrainingAndTestSet( set_name='ds-blue')
 
-#BrCaGenerator.partitionTrainingAndTestSet('ds-brca')
-# BrCaGenerator.generateMegPhaseDataset(suffix='')
-# BrCaGenerator.generateSplitPhaseDataset(suffix='')
-# BrCaGenerator.generateSplitPhaseDataset(suffix='')

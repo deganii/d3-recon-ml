@@ -1,8 +1,12 @@
+
 import os
+# force-train on CPU to avoid holonet 128 error
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import sys
 
 if sys.version_info[0] < 3:
-    raise Exception("Must be using Python 3")
+    raise Exception("Must be using Python 3, not {0}.{1}".format(sys.version_info[0], sys.version_info[1]))
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import scipy.sparse.linalg
@@ -156,14 +160,14 @@ from src.processing.predict_realtime import prediction_realtime
 #            batch_size=16, activation='sigmoid', advanced_activations=True, extra_phase_layers=1,
 #            output_depth=3, long_description='Feed magnitude information into phase prediction')
 
-# train_holo_net('holo_net_128', dataset='ds-lymphoma', records=-1,
-#             filter_size=64, learn_rate=1e-4, conv_depth=1, epochs=151, period=15,
-#            batch_size=16, activation='sigmoid', advanced_activations=True, extra_phase_layers=1,
-#            output_depth=3, long_description='Feed magnitude information into phase prediction')
+train_holo_net('holo_net_128', dataset='ds-lymphoma', records=64,
+            filter_size=128, learn_rate=1e-4, conv_depth=1, epochs=151, period=15,
+           batch_size=4, activation='sigmoid', advanced_activations=True, extra_phase_layers=1,
+           output_depth=3, long_description='Feed magnitude information into phase prediction')
+#
 
-
-data, label = DataLoader.load_training(records=-1, separate = False, dataset='hangul_5')
-ssim = prediction_realtime('holo_net_64_1', data, label, transpose=False, long_description='')
+# data, label = DataLoader.load_training(records=-1, separate = False, dataset='hangul_5')
+# ssim = prediction_realtime('holo_net_64_1', data, label, transpose=False, long_description='')
 
 # generate free space transfer
 # import numpy as np
@@ -182,6 +186,8 @@ ssim = prediction_realtime('holo_net_64_1', data, label, transpose=False, long_d
 #            batch_size=16, activation='sigmoid',
 #            output_depth=1, long_description='Train holonet64 with 2 filters on lymphoma (real/imag) dataset')
 #
+
+
 
 # w = m.layers[1].get_weights()
 # imageio.imwrite('f:/d3-recon-ml/holo64x64.png',w[0])

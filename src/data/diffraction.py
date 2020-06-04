@@ -24,13 +24,29 @@ from src.processing.folders import Folders
 class DiffractionGenerator(object):
 
     @classmethod
-    def ft2(cls, g, delta):
-        return np.fft.fftshift(np.fft.fft2((np.fft.fftshift(g)))) * delta ** 2
+    def ft2(cls, g, delta=2.2e-6):
+        print('ft2 shift')
+        return np.fft.fftshift(np.fft.fft2((np.fft.fftshift(g)))) #* delta ** 2
 
     @classmethod
     def ift2(cls, G, dfx, dfy):
+        print('ift2 shift')
         Nx, Ny = np.shape(G)
-        return np.fft.ifftshift(np.fft.ifft2(np.fft.ifftshift(G))) * Nx * Ny * dfx * dfy
+        return np.fft.ifftshift(np.fft.ifft2(np.fft.ifftshift(G))) #* Nx * Ny * dfx * dfy
+
+    @classmethod
+    def ft2_noshift(cls, g, delta=2.2e-6):
+        print('ft2 noshift')
+        # return np.fft.fft2((np.fft.fftshift(g)))* delta ** 2
+        return np.fft.fft2(((g))) #* delta ** 2
+
+    @classmethod
+    def ift2_noshift(cls, G, dfx, dfy):
+        print('ift2 noshift')
+        Nx, Ny = np.shape(G)
+        # return np.fft.ifftshift(np.fft.ifft2(G)) * Nx * Ny * dfx * dfy
+        return (np.fft.ifft2(G)) #* Nx * Ny * dfx * dfy
+
 
     @classmethod
     def upsampling(cls, data, dx1, upsample=2):
@@ -62,6 +78,17 @@ class DiffractionGenerator(object):
         Gfp = np.exp((-1j * k * z) * np.sqrt(1 - lmbda ** 2 * fx ** 2 - lmbda ** 2 * fy ** 2))
         return Gfp
 
+    @classmethod
+    def freeSpaceKernelOnly(cls, Nx, Ny, z = 5e-4, lmbda = 405e-9,
+                             delta=2.2e-6):
+        k = 2 * np.pi / lmbda
+        dfx = 1 / (Nx * delta)
+        dfy = 1 / (Ny * delta)
+        fx, fy = np.meshgrid(np.arange(-Ny / 2, Ny / 2, 1) * dfy,
+                                 np.arange(-Nx / 2, Nx / 2, 1) * dfx)
+        # forward propagate img => hologram, non-cascaded (Kreis 2002)
+        Gfp = np.exp((-1j * k * z) * np.sqrt(1 - lmbda ** 2 * fx ** 2 - lmbda ** 2 * fy ** 2))
+        return Gfp
 
     @classmethod
     def freeSpacePropagation(cls, bf_image, z = 5e-4, lmbda = 405e-9,
@@ -94,6 +121,45 @@ class DiffractionGenerator(object):
         R = ft2(recon, delta)
         Output = ift2(np.multiply(R, Gfp), dfx, dfy)
         return Output
+
+    @classmethod
+    def freeSpacePropagationNoShift(cls, bf_image, z = 5e-4, lmbda = 405e-9,
+                             delta=2.2e-6, upsample=2, pad_width=0, Gfp=None):
+        ft2 = DiffractionGenerator.ft2_noshift
+        ift2 = DiffractionGenerator.ift2_noshift
+        if type(bf_image) is not np.ndarray:
+            recon = np.array(bf_image)
+            recon = recon / np.max(recon)
+        else:
+            recon = bf_image
+
+        if upsample > 1:
+            recon, delta = DiffractionGenerator.upsampling(recon, delta, upsample)
+            #imageio.imwrite('../../data/ds-simulated/00000-0-US.png', recon)
+
+        recon = np.pad(recon, pad_width=pad_width, mode='edge')
+        #imageio.imwrite('../../data/ds-simulated/00000-0-PAD.png', recon)
+
+        k = 2 * np.pi / lmbda
+        Nx, Ny = np.shape(recon)
+        dfx = 1 / (Nx * delta)
+        dfy = 1 / (Ny * delta)
+
+        if Gfp is None:
+            fx, fy = np.meshgrid(np.arange(-Ny / 2, Ny / 2, 1) * dfy,
+                                 np.arange(-Nx / 2, Nx / 2, 1) * dfx)
+            # forward propagate img => hologram, non-cascaded (Kreis 2002)
+            Gfp = np.exp((-1j * k * z) * np.sqrt(1 - lmbda ** 2 * fx ** 2 - lmbda ** 2 * fy ** 2))
+            imageio.imwrite(r'c:\dev\Gfpi.png', np.real(np.fft.ifftshift(Gfp)))
+            imageio.imwrite(r'c:\dev\Gfpf.png', np.real(np.fft.fftshift(Gfp)))
+            print("GFPShift equal: {0}".format(
+                str(np.array_equal(np.fft.ifftshift(Gfp), np.fft.fftshift(Gfp)))))
+            Gfp = np.fft.ifftshift(Gfp)
+
+        R = ft2(recon, delta)
+        Output = ift2(np.multiply(R, Gfp), dfx, dfy)
+        return Output
+
 
     @classmethod
     def generateRandomText(cls,  text_len = 3):
@@ -392,8 +458,96 @@ if __name__ == "__main__":
     # DiffractionGenerator.diffractMNIST()
     #DiffractionGenerator.diffractMNIST(set_name='mnist-chopped', chop=True)
 
-    recon = np.asarray(Image.open(r'c:\dev\Worms.jpg').convert('L'))
-    # propagate to a hologram
-    holo = np.abs(DiffractionGenerator.freeSpacePropagation(recon, upsample=1, z=9e-4))
-    # image.save('output.png')
-    imageio.imwrite(r'c:\dev\holo.png', np.abs(holo))
+    # # # Diffract a random image...
+    # recon = np.asarray(Image.open(r'c:\dev\Worms.jpg').convert('L'))
+    # # propagate to a hologram
+    # holo1 = np.abs(DiffractionGenerator.freeSpacePropagation(recon, upsample=1, z=9e-4))
+    # # image.save('output.png')
+    # imageio.imwrite(r'c:\dev\holo1.png', np.abs(holo1))
+    # # propagate to a hologram
+    # holo2 = np.abs(DiffractionGenerator.freeSpacePropagationNoShift(recon, upsample=1, z=9e-4))
+    # # image.save('output.png')
+    # print("Arrays equal: {0}".format(str(np.array_equal(holo1, holo2))))
+
+
+    # imageio.imwrite(r'c:\dev\holo2.png', np.abs(holo2))
+
+    # np.set_printoptions(precision=2, suppress=True, linewidth=400)
+
+    # generate code for a free-space propagation kernel...
+    # kernel_w, kernel_h = 256,256
+    # delta = 2.2e-6
+    # Gfp = DiffractionGenerator.freeSpaceKernelOnly(kernel_w, kernel_h,  z = 9e-4, lmbda = 405e-9,
+    #                          delta=2.2e-6)
+    # imageio.imwrite(r'c:\dev\nGFP11.png', np.real(Gfp))
+
+    # # Gfp = np.fft.ifftshift(Gfp)
+    # recon = np.asarray(Image.open(r'c:\dev\Worms.jpg').convert('L'))
+    # rf = np.fft.rfft2(recon,s=(256,256))
+    # rfft = np.hstack((rf, np.conj(np.flip(np.vstack((rf, rf[0])))[:-1, 1:-1])))
+    # # rfft = np.fft.fft2(recon)
+    # conv = np.multiply(rfft, Gfp)
+    # # ifft = np.fft.ifft2(conv)
+    # ifft = np.fft.irfft2(conv)
+    # imageio.imwrite(r'c:\dev\holoreal.png', np.abs(ifft))
+    # imageio.imwrite(r'c:\dev\nGFP.png', np.real(Gfp))
+    # imageio.imwrite(r'c:\dev\nGFPi.png', np.imag(Gfp))
+
+    # kernel_w, kernel_h = 2048,2048
+    # delta = 2.2e-6
+    # Gfp = DiffractionGenerator.freeSpaceKernelOnly(kernel_w, kernel_h,  z = 11e-4, lmbda = 625e-9,
+    #                          delta=2.2e-6)
+    # Gfp = np.fft.ifftshift(Gfp)
+    # recon = np.asarray(Image.open(r'C:\dev\opencv-debug\holotest\video_test.png').convert('L'))
+    # rf = np.fft.rfft2(recon,s=(kernel_w,kernel_h))
+    # rfft = np.hstack((rf, np.conj(np.flip(np.vstack((rf, rf[0])))[:-1, 1:-1])))
+    # imageio.imwrite(r'C:\dev\opencv-debug\holotest\video_test_spectrumi.png', np.imag(rf))
+    # # rfft = np.fft.fft2(recon)
+    # conv = np.multiply(rfft, Gfp)
+    # # ifft = np.fft.ifft2(conv)
+    # ifft = np.fft.irfft2(conv)
+    # imageio.imwrite(r'c:\dev\holoreal.png', np.abs(ifft))
+    # imageio.imwrite(r'c:\dev\nGFP.png', np.real(Gfp))
+    # imageio.imwrite(r'c:\dev\nGFPi.png', np.imag(Gfp))
+
+    # for i in range(kernel_w):
+    #     for j in range(kernel_h):
+    #         print("{{{0:0.6f}, {1:0.6f}}}".format(gfp[i,j].real, gfp[i,j].imag), end='')
+    #         print(', ', end='')
+    #     print()
+
+    def print_data(data, x, y):
+        print(data[x:x+8,y:y+8])
+
+
+    # CUDA side-by-side test
+    kernel_w, kernel_h = 2048,2048
+    np.set_printoptions(precision=2, suppress=False, linewidth=1000)
+    delta = 2.2e-6
+    dz = 11.0e-4
+    lmbda = 625e-9
+    Gfp = DiffractionGenerator.freeSpaceKernelOnly(kernel_w, kernel_h,  z = dz, lmbda = lmbda,  delta=delta)
+    kernel_spec = np.fft.fftshift(Gfp)
+    kernel_spec = kernel_spec.astype(np.complex64)
+
+    # load the test image
+    # imageio.imread(r'C:\dev\opencv-debug\video_test.png', format='L')
+    data_frame = np.asarray(Image.open(r'C:\dev\opencv-debug\video_test.png').convert('L'))
+    padded = np.pad(data_frame, ((544, 544), (384, 384)), 'constant', constant_values=(0.0, 0.0))
+    # cudaPad = np.asarray(Image.open(r'C:\dev\opencv-debug\holotest\d_PaddedData.png').convert('L'))
+    # imageio.imwrite(r'C:\dev\opencv-debug\pytest\d_PaddedData.png', padded)
+    data_spec = np.fft.fft2(padded)
+    data_spec = data_spec.astype(np.complex64)
+
+    conv_spec = data_spec * kernel_spec
+    conv_dest = np.fft.ifft2(conv_spec)
+    imageio.imwrite(r'C:\dev\opencv-debug\pytest\d_ConvDest_mag_cpp.png', np.abs(conv_dest))
+
+
+
+    # imageio.imwrite(r'c:\dev\nGFP11.png', np.real(Gfp))
+
+    # fftshift the CUDA image
+    # cudaPad = np.asarray(Image.open(r'C:\dev\opencv-debug\holotest\d_PaddedData.png').convert('L'))
+    # fftshifted = np.fft.fftshift(cudaPad)
+    # imageio.imwrite(r'C:\dev\opencv-debug\holotest\d_PaddedDataShifted.png', fftshifted)
