@@ -12,7 +12,7 @@ keras_contrib==2.0.8
 Keras==2.2.4
 numpy==1.16.5
 imageio==2.8.0
-Pillow==7.1.1
+Pillow==8.2.0
 pygame==1.9.6
 PyOpenGL==3.1.5
 skimage==0.0
